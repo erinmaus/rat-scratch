@@ -1,0 +1,16 @@
+name = rat-scratch-test
+version = 1.0.0
+
+[rs-book]
+hash = sha256:30faa53fcc102f3cf544d97f92357d4f511b8dd4d530435489b292e62b2047be
+root = .*
+source = rs-book
+url = http://localhost:3000/fixtures/rs-book@3.4.0.zip
+version = 3.4.0
+
+[rs-graphics-3d]
+hash = sha256:553fac0ccaa9332ae915c63c9da95826590b5db347801790a43ed7508ec83a31
+root = rs%-graphics%-3d@4%.5%.0
+source = rs-graphics-3d
+url = http://localhost:3000/fixtures/rs-graphics-3d@4.5.0.zip
+version = 4.5.0

@@ -1,0 +1,124 @@
+# name of the library, no version, etc
+name = library-name
+
+# semantic version of library, in {major}.{minor}.{patch}
+#   * major changes indicate breaking changes
+#   * minor changes indicate new functionality, but no breaking changes
+#   * patch fixes indicate bug fixes
+#
+# e.g., if one lib depends on 1.2.3, another 1.4.5, and the other 1.7.0,
+# then 1.7.0 will be the winner
+#
+# however, if one lib depends on 1.0.3 and another on 2.3.0, rat-scratch
+# will raise an error since there's no assurance 2.3.0 is
+# backwards compatible with 1.0.3 (can be bypassed with `--force` though)
+version = 1.0.0 
+
+# output directory when building library
+#
+# the path is **relative** to the directory containing the .rsmeta
+# and cannot escape this directory (e.g., "../foo" is not valid)
+#
+# can use keys in root level of meta like so: ./lib/${name} 
+# this will put everything in <folder with .rsmeta>/lib/library-name
+#
+# will create sub-directories recursively
+#
+# final directory must be empty or not exist (can pass in `--force` to bypass)
+directory.build = ./${name}-v${version}
+
+# output directory for bundling
+# 
+# bundling is "importing & resolving" all the dependencies,
+# but **not** constructing the bundled app
+#
+# rat-scratch has complete control over the contents of this
+# directory - don't put anything in there you don't want to lose
+#
+# generally though, rat-scratch will manage a `/lib/.tmp` folder
+# to store artifacts and create top-level directories for each lib
+#
+# same semantics as `directory.build`
+directory.library = ./lib
+
+# the license the library is licensed under
+license = MPL-2.0
+
+# (optional)
+#
+# override module export for the interceptor `init.lua`
+# using the provided path (without quotes)
+#
+# the default is the relative path of the bundled module.
+# assuming defaults, this would be something like: library-name.source
+# lls.module = library-name.source
+
+# unmanaged dependency named and resolved as "slick"
+#
+# an unmanaged dependency is one that does not use
+# rat scratch (i.e., most Lua libraries)
+
+[slick]
+
+# version of library imported
+#
+# can be "*" if the library doesn't really have a "version"...
+# though that's probably a bad idea! a "*" version library
+# has the highest precedence during resolution...
+#
+# for managed dependencies, this will be automatically pulled
+# from the `.rsmeta`
+#
+# for unmanaged dependencies, will be pulled from the zip using
+# this Lua pattern: (%d+)%.(%d+)%.(%d+)
+#
+# if the version couldn't be determined, then `add` will fail;
+# bypassing with `--force` will set the version to "*"
+#
+# will be used in resolution of dependencies
+version = 4.0.8
+
+# url of artifact **zip** 
+#
+# artifact must be a **zip**!
+url = https://github.com/erinmaus/slick/archive/refs/tags/slick-v4.0.8.zip
+
+# will automatically be set for dependencies added via `add --github`
+#
+# otherwise, defines the "root" of the zip (or first folder)
+#
+# can use wildcards; first match of a directory (ASCII lexical sort)
+# will be used; will error during `add` if no root found
+#
+# defaults to `./` (root of ZIP) if not provided via `add --root=<value>`
+root = slick-slick-v4.0.8
+
+# hash in the format <hash-function>:<hash>
+#
+# defaults to sha256
+#
+# if there is a hash mismatch, will generate an error
+# and delete temporary artifact
+#
+# must be provided to rat-scratch when `add`ing a library from an `HTTP` source
+# not needed for `add`ing via HTTPS
+hash = sha256:38f308e110009c760936cb64e5f20a78565e0504964388f2eec3fe788a72d461
+
+# directory of the .rsmeta (if the library is managed) **OR**
+# directory/location of library source (if library is unmanaged)
+#
+# e.g., unmanaged examples include:
+#  * for `rxi/json.lua`, this would be "json.lua"
+#  * for slick, this would be `slick`
+#
+# a managed example is `rat-scratch-module` in this very project!
+#  * `rat-scratch-module` will always be imported by managed
+#     libraries (e.g., when running `init`); the `.rsmeta`
+#     is located at `./rat-scratch-module/.rsmeta`, thus
+#     source is rat-scratch-module; this also lets you do a
+#     mono-repo sort-of approach
+#  * otherwise defaults to './' for managed projects
+#
+# `add` will error (and `--force` will not bypass!) if `source` is not
+# provided and there is no .rsmeta in the root directory
+source = slick
