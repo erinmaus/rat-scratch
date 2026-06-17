@@ -1,0 +1,29 @@
+name: testing
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+  workflow_dispatch: null
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Set up
+        run: |
+          sudo apt-get install libfuse2
+      - name: Download LÖVE 💜
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          .github/workflows/love.sh
+      - name: Tests
+        run: |
+          export PATH="%(pwd):${PATH}"
+          love . test Tests
