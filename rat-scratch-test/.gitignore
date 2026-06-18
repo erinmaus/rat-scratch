@@ -4,3 +4,4 @@ fixtures/
 source/
 main.lua
 conf.lua
+.rsmeta
