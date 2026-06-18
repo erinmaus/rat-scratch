@@ -6,6 +6,7 @@ local Bundle = require("RatScratch.Commands.Bundle")
 local Console = require("RatScratch.Console")
 local Test = require("RatScratch.Commands.Test")
 local PackageService = require("RatScratch.Services.PackageService")
+local Help = require("RatScratch.Commands.Help")
 
 local App = {}
 
@@ -14,6 +15,7 @@ App.COMMANDS = {
 	{ name = "test", command = Test },
 	{ name = "bundle", command = Bundle },
 	{ name = "build", command = Build },
+	{ name = "help", command = Help },
 }
 
 function App.getOptionAndValue(argument)
@@ -29,7 +31,7 @@ function App.processArguments(arguments)
 	do
 		for _, possibleCommand in ipairs(App.COMMANDS) do
 			if possibleCommand.name == arguments[1] then
-				command = possibleCommand.command
+				command = possibleCommand
 				break
 			end
 		end
@@ -56,7 +58,7 @@ function App.processArguments(arguments)
 		local option, value = App.getOptionAndValue(argument)
 		if option then
 			local hasOption = false
-			for _, possibleOption in ipairs(command.OPTIONS) do
+			for _, possibleOption in ipairs(command.command.OPTIONS) do
 				if possibleOption.option == option then
 					if option.argument and not value then
 						Console.error("option '%s' needs value %s", possibleOption.option, option.argument)
@@ -67,7 +69,8 @@ function App.processArguments(arguments)
 			end
 
 			local isOptionDebug = option == "debug" and os.getenv("LOCAL_LUA_DEBUGGER_VSCODE") == "1"
-			if not (hasOption or isOptionDebug) then
+			local isOptionHelp = option == "help"
+			if not (hasOption or isOptionDebug or isOptionHelp) then
 				Console.error("option '%s' not valid for command '%s'", option, arguments[1])
 			end
 
@@ -108,6 +111,32 @@ function App.deinit(options)
 	FilesystemService.unmount()
 end
 
+function App.help(command)
+	local meta = MetaService.parseMeta(".rsmeta")[1]
+
+	print(("%s - %s"):format(meta.name, meta.version))
+	print("bundle libraries for distribution")
+	print()
+	print(("usage: %s <command> [options] [input1...]"):format(meta.name))
+	print()
+
+	if command.name == "help" then
+		command.command.perform()
+		return
+	end
+
+	local flag = love.system.getOS() == "Windows" and "/" or "--"
+	for _, option in ipairs(command.command.OPTIONS) do
+		if option.argument then
+			print("", ("%s%s=<%s>"):format(flag, option.option, option.argument))
+		else
+			print("", ("%s%s"):format(flag, option.option))
+		end
+
+		print("", "", "", option.description)
+	end
+end
+
 function App.run(args)
 	if love.filesystem.getInfo(".args", "file") then
 		local argsFile = love.filesystem.read(".args")
@@ -120,11 +149,16 @@ function App.run(args)
 	end
 
 	local command, options, inputs = App.processArguments(args)
+	if options["help"] or command.name == "help" then
+		App.help(command)
+		return
+	end
+
 	if options.meta then
 		App.init(options)
 	end
 
-	command.perform(options, inputs)
+	command.command.perform(options, inputs)
 
 	if options.meta then
 		App.deinit(options)
