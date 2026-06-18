@@ -32,7 +32,15 @@ love.filesystem.write(
 love.filesystem.write(
 	"staging/test/main.lua",
 	[[
+		function love.errorhandler()
+			os.exit(1)
+		end
+
   		local test = require "build.rat-scratch-test"
+		local module = require "build.rat-scratch-test.lib.rat-scratch-module"
+
+		local versions = module.getVersions("rat-scratch-test")
+		print(("rat-scratch-test: %s (%d)"):format(versions[1], #versions))
 
 		test.main()
 		love.event.quit()
@@ -47,5 +55,6 @@ Test.addPackage({ github = true, source = "bump.lua" }, "kikito/bump.lua@v3.1.7"
 Test.build({})
 
 local file = io.popen("love ./rat-scratch-test")
+assert(file:read("*l") == "rat-scratch-test: 1.0.0 (1)")
 assert(file:read("*l") == "slick: 4.0.8")
 assert(file:read("*l") == "bump: bump v3.1.7")

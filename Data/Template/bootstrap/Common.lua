@@ -42,11 +42,19 @@ function RatScratchCommon:print(stream, wrapper, format, ...)
 	if select("#", ...) == 0 then
 		message = format
 	else
-		message = string.format(format, ...)
+		message = format:format(...)
 	end
 
 	stream:write(wrapper:format(message))
 	return message
+end
+
+local function _matchPackagePath(path, pattern, currentPackageName, currentPackageRequire)
+	if currentPackageName and currentPackageRequire then
+		return currentPackageName, currentPackageRequire
+	end
+
+	return path:match(pattern)
 end
 
 function RatScratchCommon:require(require, basePackageName, path, packages)
@@ -55,13 +63,33 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 		return package.loaded[path] or require(path)
 	end
 
-	local packageName = path:match(("^%s.([^.]+)"):format(basePackageWithName.childrenPrefix or "lib"))
-		or path:match("^([^.]+)")
+	local packageName, packageRequire
+	if path == ("%s.source"):format(basePackageName.require) then
+		packageName, packageRequire = basePackageName, "source"
+	else
+		packageName, packageRequire = _matchPackagePath(
+			path,
+			("^%s%%.%s%%.([^.]+)%%.?(.*)"):format(
+				basePackageWithName.pattern,
+				basePackageWithName.childrenPrefixPattern or "lib"
+			),
+			packageName,
+			packageRequire
+		)
+		packageName, packageRequire = _matchPackagePath(
+			path,
+			("^%s%%.([^.]+)%%.?(.*)"):format(basePackageWithName.childrenPrefixPattern or "lib"),
+			packageName,
+			packageRequire
+		)
+		packageName, packageRequire = _matchPackagePath(path, "^([^.]+)%.?(.*)", packageName, packageRequire)
+	end
+
 	local packagesWithName = packages[packageName]
 	local targetPackageWithName = packagesWithName and basePackageWithName.packages[packageName]
 
-	if not targetPackageWithName then
-		return package.loaded[path] or require(path)
+	if not targetPackageWithName or (packageName and packageRequire and packageRequire ~= "") then
+		return package.loaded[path] or require(path), targetPackageWithName or basePackageWithName
 	end
 
 	local basePackageResolutions = self.resolved[basePackageName]
@@ -97,6 +125,7 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 		end
 	end
 
+	local result, package
 	if bestPackageWithName then
 		local currentPackageWithName = self.packages[packageName]
 		if currentPackageWithName and bestPackageWithName.version ~= currentPackageWithName.version then
@@ -116,7 +145,8 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 			self.packages[packageName] = bestPackageWithName
 		end
 
-		return require(bestPackageWithName.path:gsub("/", "."))
+		result = require(bestPackageWithName.path:gsub("/", "."))
+		package = bestPackageWithName
 	elseif closestPackageWithName then
 		self:warn(
 			'module "%s@%s" (path = "%s") required package "%s@%s" (path = "%s"), but closest package was "%s@%s" (path = "%s"); there might be runtime compatibility isssues',
@@ -149,24 +179,30 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 			self.packages[packageName] = closestPackageWithName
 		end
 
-		return require(closestPackageWithName.path:gsub("/", "."))
+		result = require(closestPackageWithName.path:gsub("/", "."))
+		package = closestPackageWithName
 	end
 
-	self:warn(
-		'module "%s@%s" (path = "%s") required package "%s@%s" (path = "%s"), but no matching package found; probably a bug in Rat Scratch',
-		basePackageWithName.name,
-		basePackageWithName.version,
-		basePackageWithName.path,
-		targetPackageWithName.name,
-		targetPackageWithName.version,
-		targetPackageWithName.path
-	)
+	if result == nil then
+		self:warn(
+			'module "%s@%s" (path = "%s") required package "%s@%s" (path = "%s"), but no matching package found; probably a bug in Rat Scratch',
+			basePackageWithName.name,
+			basePackageWithName.version,
+			basePackageWithName.path,
+			targetPackageWithName.name,
+			targetPackageWithName.version,
+			targetPackageWithName.path
+		)
 
-	if not self.packages[packageName] then
-		self.packages[packageName] = targetPackageWithName
+		if not self.packages[packageName] then
+			self.packages[packageName] = targetPackageWithName
+		end
+
+		result = require(targetPackageWithName.path:gsub("/", "."))
+		package = targetPackageWithName
 	end
 
-	return require(targetPackageWithName.path:gsub("/", "."))
+	return result, package
 end
 
 function RatScratchCommon:splitVersion(version)
@@ -253,9 +289,12 @@ function RatScratchCommon:processPackages(packages)
 
 		local namedPackage = {
 			path = package.path,
+			require = package.path:gsub("/", "."),
+			pattern = package.path:gsub("%-", "%%-"):gsub("/", "%%."),
 			name = packageName,
 			bundled = false,
 			isRSLib = package.isRSLib,
+			meta = package.meta and package.meta[1],
 		}
 
 		if package.isRSLib and package.packages then
@@ -266,6 +305,7 @@ function RatScratchCommon:processPackages(packages)
 
 			namedPackage.version = package.packages[1].version
 			namedPackage.childrenPrefix = childrenPrefix
+			namedPackage.childrenPrefixPattern = childrenPrefix:gsub("[%-%.]", "%%%1")
 			namedPackage.packages = {}
 
 			for i = 2, #package.packages do
@@ -276,13 +316,26 @@ function RatScratchCommon:processPackages(packages)
 					packagesByName[childPackage.name] = childPackagesWithName
 				end
 
+				local childPath = ("%s/%s/%s"):format(package.path, childrenPrefix, childPackage.name)
+				local childRequire = childPath:gsub("/", ".")
+				local childPattern = childPath:gsub("[%-%.]", "%%%1")
+
 				local childNamedPackage = {
-					path = childPackage.path or ("%s/%s/%s"):format(package.path, childrenPrefix, childPackage.name),
-					name = childPackage.name,
+					path = childPath,
+					require = childRequire,
+					name = childPattern,
 					version = childPackage.version,
 					isRSLib = childPackage.isRSLib,
 					bundled = true,
 				}
+
+				for j = 2, #package.meta do
+					local otherMeta = package.meta[j]
+					if otherMeta.name == childPackage.name then
+						childNamedPackage.meta = otherMeta
+						break
+					end
+				end
 
 				table.insert(childPackagesWithName.packages, childNamedPackage)
 				namedPackage.packages[childPackage.name] = childNamedPackage

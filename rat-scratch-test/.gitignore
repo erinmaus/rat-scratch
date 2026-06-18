@@ -2,3 +2,4 @@ lib/
 build/
 fixtures/
 source/
+main.lua

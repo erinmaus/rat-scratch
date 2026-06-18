@@ -35,8 +35,7 @@ function Build.perform(options)
 	end
 
 	local moduleDestinationPath = ("%s/%s"):format(outputLibraryDirectory, "rat-scratch-module")
-	FilesystemService.copy("rat-scratch-module/source", ("%s/source"):format(moduleDestinationPath))
-	FilesystemService.copy("rat-scratch-module/.rsmeta", ("%s/.rsmeta"):format(moduleDestinationPath))
+	FilesystemService.copy("rat-scratch-module/source/init.lua", ("%s/init.lua"):format(moduleDestinationPath))
 
 	if lock[1].source then
 		local sourcePath = ("staging/module/%s"):format(lock[1].source)

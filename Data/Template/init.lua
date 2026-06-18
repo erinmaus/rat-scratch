@@ -23,9 +23,25 @@ local function load()
 		return basePackage
 	end
 
+	local rsModule = common:require(require, getBasePackage(1), "lib.rat-scratch-module", packages)
+	local function registerPackage(module, package, warnings)
+		if rsModule then
+			rsModule.register(package.meta, module)
+
+			if warnings then
+				rsModule.addWarnings(package.meta, warnings)
+			end
+		end
+	end
+
 	local require = require
 	local xrequire = function(path)
-		return common:require(require, getBasePackage(2), path, packages)
+		local result, package, warnings = common:require(require, getBasePackage(2), path, packages)
+		if package then
+			registerPackage(result, package, warnings)
+		end
+
+		return result
 	end
 
 	local patchedG = {
@@ -37,7 +53,13 @@ local function load()
 
 	setfenv(0, setmetatable(g, patchedG))
 
-	return common:require(require, getBasePackage(1), REQUIRE_PACKAGE_NAME .. ".source", packages)
+	local result, package, warnings =
+		common:require(require, getBasePackage(1), REQUIRE_PACKAGE_NAME .. ".source", packages)
+	if result and package then
+		registerPackage(result, package, warnings)
+	end
+
+	return result
 end
 
 local result
@@ -53,7 +75,7 @@ do
 	until coroutine.status(l) == "dead"
 end
 
---- @module "Template.bootstrap.Common"
+--- @module "Template"
 local module = result
 
 return module

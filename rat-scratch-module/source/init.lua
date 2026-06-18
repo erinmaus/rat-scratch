@@ -1,7 +1,88 @@
+local clear = require("table.clear")
 local RatScratchModule = {}
 
-function RatScratchModule.print()
-	print("hello world")
+RatScratchModule.REGISTRY = {}
+
+function RatScratchModule.register(meta, module)
+	local registeredModule = RatScratchModule.REGISTRY[meta.name]
+	if not registeredModule then
+		registeredModule = {
+			versions = {},
+			modulesByVersion = {},
+			warnings = {},
+		}
+
+		RatScratchModule.REGISTRY[meta.name] = registeredModule
+	end
+
+	if not registeredModule.modulesByVersion[meta.version] then
+		table.insert(registeredModule.versions, meta.version)
+		table.sort(registeredModule.versions)
+
+		registeredModule.modulesByVersion[meta.version] = {
+			module = module,
+			warnings = {},
+		}
+	end
+end
+
+function RatScratchModule.addWarnings(meta, warnings)
+	local registeredModule = RatScratchModule.REGISTRY[meta.name]
+	if not registeredModule then
+		return
+	end
+
+	local module = registeredModule.modulesByVersion[meta.version]
+	for _, warning in ipairs(warnings) do
+		table.insert(registeredModule, warning)
+
+		if module then
+			table.insert(module.warnings, warning)
+		end
+	end
+end
+
+function RatScratchModule.getWarnings(name, version, result)
+	result = result or {}
+	clear(result)
+
+	local registeredModule = RatScratchModule.REGISTRY[name]
+	if not registeredModule then
+		return result
+	end
+
+	local warnings = version
+		and registeredModule.modulesByVersion[version]
+		and registeredModule.modulesByVersion[version].warnings
+	warnings = warnings or registeredModule.warnings
+
+	for _, warning in ipairs(warnings) do
+		table.insert(result, warning)
+	end
+
+	return result
+end
+
+function RatScratchModule.getVersions(name, result)
+	result = result or {}
+	clear(result)
+
+	local registeredModule = RatScratchModule.REGISTRY[name]
+	if not registeredModule then
+		return result
+	end
+
+	for _, version in ipairs(registeredModule.versions) do
+		table.insert(result, version)
+	end
+
+	return result
+end
+
+function RatScratchModule.getModule(name, version)
+	local registeredModule = RatScratchModule.REGISTRY[name]
+	local module = registeredModule and registeredModule.modulesByVersion[version]
+	return module and module.module
 end
 
 return RatScratchModule
