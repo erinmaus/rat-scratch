@@ -36,10 +36,6 @@ const makeZip = (folder) => {
 	const zipFolder = folder.replace(/\.([^\.]*)$/, ".zip");
 	if (fs.existsSync(zipFolder) && fs.statSync(zipFolder).isFile()) {
 		const result = fs.readFileSync(zipFolder);
-		console.log("--- cache", {
-			zipFolder,
-			hash: makeHash(result),
-		});
 		return result;
 	}
 
@@ -60,11 +56,6 @@ const makeZip = (folder) => {
 	});
 
 	const zipBuffer = zip.toBuffer();
-	console.log("--- rebuild", {
-		zipFolder,
-		hash: makeHash(zipBuffer),
-	});
-
 	fs.writeFileSync(zipFolder, zipBuffer);
 	return zipBuffer;
 };

@@ -18,6 +18,7 @@ jobs:
         name: Set up
         run: |
           sudo apt-get install libfuse2
+          npm ci
       - name: Download LÖVE 💜
         env:
           GH_TOKEN: ${{ github.token }}
@@ -26,4 +27,5 @@ jobs:
       - name: Tests
         run: |
           export PATH="%(pwd):${PATH}"
+          node http.js &
           love . test Tests
