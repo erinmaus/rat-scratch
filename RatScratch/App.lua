@@ -7,11 +7,13 @@ local Console = require("RatScratch.Console")
 local Test = require("RatScratch.Commands.Test")
 local PackageService = require("RatScratch.Services.PackageService")
 local Help = require("RatScratch.Commands.Help")
+local Get = require("RatScratch.Commands.Get")
 
 local App = {}
 
 App.COMMANDS = {
 	{ name = "add", command = Add },
+	{ name = "get", command = Get },
 	{ name = "test", command = Test },
 	{ name = "bundle", command = Bundle },
 	{ name = "build", command = Build },
@@ -37,7 +39,7 @@ function App.processArguments(arguments)
 		end
 
 		if not command then
-			Console.error("command '%s' not recognized; use \"help\" for a list of commands")
+			Console.error("command '%s' not recognized; use \"help\" for a list of commands", arguments[1])
 		end
 	end
 

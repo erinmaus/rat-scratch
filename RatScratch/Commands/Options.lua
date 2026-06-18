@@ -11,6 +11,12 @@ local Options = {
 		description = "directory relative to Rat Scratch module meta file to output files",
 	},
 
+	["inspect-package"] = {
+		option = "package",
+		argument = "name",
+		description = "package to inspect",
+	},
+
 	["add-name"] = {
 		option = "name",
 		argument = "name",
