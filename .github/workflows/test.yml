@@ -23,7 +23,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          .github/workflows/love.sh
+          .github/workflows/get_love.sh
       - name: Tests
         run: |
           export PATH="%(pwd):${PATH}"
