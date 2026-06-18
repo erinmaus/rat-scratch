@@ -47,6 +47,17 @@ love.filesystem.write(
 	]]
 )
 
+love.filesystem.write(
+	"staging/test/conf.lua",
+	[[
+		function love.conf(t)
+			t.modules.graphics = false
+			t.modules.window = false
+			t.modules.audio = false
+		end
+	]]
+)
+
 Test.stop()
 
 Test.init()
