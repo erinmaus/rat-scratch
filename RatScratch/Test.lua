@@ -5,6 +5,7 @@ local Add = require("RatScratch.Commands.Add")
 local Console = require("RatScratch.Console")
 local MetaService = require("RatScratch.Services.MetaService")
 local Build = require("RatScratch.Commands.Build")
+local Bundle = require("RatScratch.Commands.Bundle")
 
 local Test = {}
 
@@ -93,12 +94,11 @@ end
 local function _add(dependencies, dependency, e)
 	local dependencyInfo = dependencies[dependency]
 
+	local name, version = dependency:match("(.*)@(.*)")
 	local filename = ("staging/test/fixtures/%s"):format(dependency)
-	local metaFilename = ("%s/.rsmeta"):format(filename)
+	local metaFilename = ("%s/%s.rsmeta"):format(filename, dependencyInfo and dependencyInfo.mono and name or "")
 
 	love.filesystem.createDirectory(filename)
-
-	local name, version = dependency:match("(.*)@(.*)")
 
 	local sourceDirectory = ("%s/%s"):format(filename, name)
 	love.filesystem.createDirectory(sourceDirectory)
@@ -213,6 +213,19 @@ function Test.build(options)
 	end
 
 	Build.perform(newOptions)
+end
+
+function Test.bundle(options)
+	local newOptions = {}
+	for key, value in pairs(options) do
+		newOptions[key] = value
+	end
+
+	if not options.meta then
+		newOptions.meta = "rat-scratch-test/.rsmeta"
+	end
+
+	Bundle.perform(newOptions)
 end
 
 function Test.hasPackages(meta, packages)

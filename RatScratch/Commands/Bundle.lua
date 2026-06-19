@@ -3,6 +3,7 @@ local MetaService = require("RatScratch.Services.MetaService")
 local ResolvePackageDependencies = require("RatScratch.Patterns.ResolvePackageDependencies")
 local InstallPackage = require("RatScratch.Patterns.InstallPackage")
 local WriteLock = require("RatScratch.Patterns.WriteLock")
+local AddRatScratchModule = require("RatScratch.Patterns.AddRatScratchModule")
 local Bundle = {}
 
 Bundle.OPTIONS = {
@@ -18,6 +19,8 @@ function Bundle.perform(arguments)
 	for i = 2, #lock do
 		InstallPackage(lock[i])
 	end
+
+	AddRatScratchModule("staging/lib")
 
 	WriteLock(lock, packageMeta)
 end

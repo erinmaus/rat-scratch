@@ -4,6 +4,7 @@ local ResolvePackageDependencies = require("RatScratch.Patterns.ResolvePackageDe
 local InstallPackage = require("RatScratch.Patterns.InstallPackage")
 local WriteLock = require("RatScratch.Patterns.WriteLock")
 local FilesystemService = require("RatScratch.Services.FilesystemService")
+local AddRatScratchModule = require("RatScratch.Patterns.AddRatScratchModule")
 local Build = {}
 
 Build.OPTIONS = {
@@ -34,8 +35,8 @@ function Build.perform(options)
 		FilesystemService.copy(librarySourcePath, libraryDestinationPath)
 	end
 
-	local moduleDestinationPath = ("%s/%s"):format(outputLibraryDirectory, "rat-scratch-module")
-	FilesystemService.copy("rat-scratch-module/source/init.lua", ("%s/init.lua"):format(moduleDestinationPath))
+	local ratScratchModuleMeta = AddRatScratchModule(outputLibraryDirectory)
+	table.insert(lock, ratScratchModuleMeta)
 
 	if lock[1].source then
 		local sourcePath = ("staging/module/%s"):format(lock[1].source)
@@ -45,9 +46,6 @@ function Build.perform(options)
 			FilesystemService.copy(sourcePath, "staging/build/source")
 		end
 	end
-
-	local moduleMeta = MetaService.parseMeta("rat-scratch-module/.rsmeta")
-	table.insert(lock, moduleMeta[1])
 
 	FilesystemService.copy("Data/Template/bootstrap", "staging/build/bootstrap")
 

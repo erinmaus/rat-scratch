@@ -24,9 +24,15 @@ local function load()
 	end
 
 	local rsModule = common:require(require, getBasePackage(1), "lib.rat-scratch-module", packages)
-	local function registerPackage(module, package, warnings)
+	local function registerPackage(path, module, package, warnings)
 		if rsModule then
-			rsModule.register(package.meta, module)
+			rsModule.register(package.meta, path, module)
+
+			if not package.bundled and package.isRSLib then
+				rsModule.addRequireScope(path, ("%s.source"):format(package.require), package.meta)
+			else
+				rsModule.addRequireScope(path, package.require, package.meta)
+			end
 
 			if warnings then
 				rsModule.addWarnings(package.meta, warnings)
@@ -36,9 +42,9 @@ local function load()
 
 	local require = require
 	local xrequire = function(path)
-		local result, package, warnings = common:require(require, getBasePackage(2), path, packages)
+		local result, resolvedPath, package, warnings = common:require(require, getBasePackage(2), path, packages)
 		if package then
-			registerPackage(result, package, warnings)
+			registerPackage(resolvedPath or path, result, package, warnings)
 		end
 
 		return result
@@ -53,10 +59,10 @@ local function load()
 
 	setfenv(0, setmetatable(g, patchedG))
 
-	local result, package, warnings =
-		common:require(require, getBasePackage(1), REQUIRE_PACKAGE_NAME .. ".source", packages)
+	local result, resolvedPath, package, warnings =
+		common:require(require, getBasePackage(1), REQUIRE_PACKAGE_NAME, packages)
 	if result and package then
-		registerPackage(result, package, warnings)
+		registerPackage(resolvedPath, result, package, warnings)
 	end
 
 	return result

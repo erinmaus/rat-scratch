@@ -2,8 +2,9 @@ local clear = require("table.clear")
 local RatScratchModule = {}
 
 RatScratchModule.REGISTRY = {}
+RatScratchModule.PATHS = {}
 
-function RatScratchModule.register(meta, module)
+function RatScratchModule.register(meta, moduleRequire, module)
 	local registeredModule = RatScratchModule.REGISTRY[meta.name]
 	if not registeredModule then
 		registeredModule = {
@@ -21,9 +22,27 @@ function RatScratchModule.register(meta, module)
 
 		registeredModule.modulesByVersion[meta.version] = {
 			module = module,
+			require = moduleRequire,
+			path = moduleRequire:gsub("%.", "/"),
 			warnings = {},
 		}
 	end
+end
+
+function RatScratchModule.addRequireScope(localRequire, moduleRequire, meta)
+	if RatScratchModule.PATHS[localRequire] then
+		local path = RatScratchModule.PATHS[localRequire]
+		assert(path.require == moduleRequire, "import mis-match")
+		assert(path.meta.name == meta.name and path.meta.version == meta.version, "import mis-match")
+
+		return
+	end
+
+	RatScratchModule.PATHS[localRequire] = {
+		require = moduleRequire,
+		path = moduleRequire:gsub("%.", "/"),
+		meta = meta,
+	}
 end
 
 function RatScratchModule.addWarnings(meta, warnings)
@@ -83,6 +102,54 @@ function RatScratchModule.getModule(name, version)
 	local registeredModule = RatScratchModule.REGISTRY[name]
 	local module = registeredModule and registeredModule.modulesByVersion[version]
 	return module and module.module
+end
+
+function RatScratchModule.getPath(name, version)
+	local registeredModule = RatScratchModule.REGISTRY[name]
+	local module = registeredModule and registeredModule.modulesByVersion[version]
+	return module and module.path
+end
+
+function RatScratchModule.getRequire(name, version)
+	local registeredModule = RatScratchModule.REGISTRY[name]
+	local module = registeredModule and registeredModule.modulesByVersion[version]
+	return module and module.require
+end
+
+function RatScratchModule.getSelfRequire(path)
+	if not path then
+		local info = debug.getinfo(2, "S")
+		path = info and (info.source:match("@(.-)%..*$") or ""):gsub("/", ".")
+	end
+
+	if not path then
+		return ""
+	end
+
+	local pathInfo = RatScratchModule.PATHS[path]
+	if not pathInfo then
+		return ""
+	end
+
+	return pathInfo.require
+end
+
+function RatScratchModule.getSelfPath(path)
+	if not path then
+		local info = debug.getinfo(2, "S")
+		path = info and (info.source:match("@(.-)%..*$") or ""):gsub("/", ".")
+	end
+
+	if not path then
+		return ""
+	end
+
+	local pathInfo = RatScratchModule.PATHS[path]
+	if not pathInfo then
+		return ""
+	end
+
+	return pathInfo.path
 end
 
 return RatScratchModule

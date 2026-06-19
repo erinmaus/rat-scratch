@@ -89,7 +89,11 @@ function FilesystemService.delete(rootPath)
 		Console.assert(love.filesystem.remove(path), 'could not remove file or directory at path "%s"', path)
 	end)
 
-	Console.assert(love.filesystem.remove(rootPath), 'could not remove file or directory at path "%s"', rootPath)
+	Console.assert(
+		love.filesystem.remove(rootPath),
+		'could not remove file or directory at path "%s"',
+		love.filesystem.getRealDirectory(rootPath)
+	)
 end
 
 function FilesystemService.clear(rootPath)

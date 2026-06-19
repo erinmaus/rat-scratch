@@ -64,8 +64,8 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 	end
 
 	local packageName, packageRequire
-	if path == ("%s.source"):format(basePackageName.require) then
-		packageName, packageRequire = basePackageName, "source"
+	if path == basePackageWithName.require then
+		packageName = basePackageName
 	else
 		packageName, packageRequire = _matchPackagePath(
 			path,
@@ -88,8 +88,19 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 	local packagesWithName = packages[packageName]
 	local targetPackageWithName = packagesWithName and basePackageWithName.packages[packageName]
 
+	if not targetPackageWithName and basePackageWithName and not basePackageWithName.bundled then
+		local newPath
+		if not packageRequire then
+			newPath = ("%s.source"):format(basePackageWithName.require)
+		else
+			newPath = ("%s.source.%s"):format(basePackageWithName.require, packageRequire)
+		end
+
+		return package.loaded[newPath] or require(newPath), newPath, basePackageWithName
+	end
+
 	if not targetPackageWithName or (packageName and packageRequire and packageRequire ~= "") then
-		return package.loaded[path] or require(path), targetPackageWithName or basePackageWithName
+		return package.loaded[path] or require(path), path, targetPackageWithName or basePackageWithName
 	end
 
 	local basePackageResolutions = self.resolved[basePackageName]
@@ -145,7 +156,7 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 			self.packages[packageName] = bestPackageWithName
 		end
 
-		result = require(bestPackageWithName.path:gsub("/", "."))
+		result = require(bestPackageWithName.require)
 		package = bestPackageWithName
 	elseif closestPackageWithName then
 		self:warn(
@@ -179,7 +190,7 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 			self.packages[packageName] = closestPackageWithName
 		end
 
-		result = require(closestPackageWithName.path:gsub("/", "."))
+		result = require(closestPackageWithName.require)
 		package = closestPackageWithName
 	end
 
@@ -198,11 +209,11 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 			self.packages[packageName] = targetPackageWithName
 		end
 
-		result = require(targetPackageWithName.path:gsub("/", "."))
+		result = require(targetPackageWithName.require)
 		package = targetPackageWithName
 	end
 
-	return result, package
+	return result, package.require, package
 end
 
 function RatScratchCommon:splitVersion(version)
