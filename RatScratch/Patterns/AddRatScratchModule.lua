@@ -3,6 +3,8 @@ local MetaService = require("RatScratch.Services.MetaService")
 
 local function AddRatScratchModule(outputDirectory, build)
 	local moduleDestinationPath = ("%s/%s"):format(outputDirectory, "rat-scratch-module")
+	FilesystemService.delete(moduleDestinationPath)
+
 	if build then
 		FilesystemService.copy("Data/Template/bootstrap", ("%s/bootstrap"):format(moduleDestinationPath))
 		FilesystemService.copy(
