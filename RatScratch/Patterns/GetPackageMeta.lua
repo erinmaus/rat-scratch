@@ -2,12 +2,15 @@ local PackageService = require("RatScratch.Services.PackageService")
 local MetaService = require("RatScratch.Services.MetaService")
 
 local function GetPackageMeta(inputMeta)
-	local hash = inputMeta.hash:match(".+:(.+)")
-	local packageRootPath = PackageService.getRootPath(inputMeta, hash)
+	local hash = inputMeta.hash and inputMeta.hash:match(".+:(.+)")
+	local packageRootPath = PackageService.getRootPath(inputMeta, hash) or PackageService.getPackagePath(inputMeta)
 
-	local metaFilename = ("%s/%s"):format(packageRootPath, ".rsmeta")
-	if love.filesystem.getInfo(metaFilename, "file") then
-		return MetaService.parseMeta(metaFilename)
+	local metaFilename1 = ("%s/%s"):format(packageRootPath, ".rsmeta")
+	local metaFilename2 = ("%s/%s.%s"):format(packageRootPath, inputMeta.name, ".rsmeta")
+	if love.filesystem.getInfo(metaFilename1, "file") then
+		return MetaService.parseMeta(metaFilename1)
+	elseif love.filesystem.getInfo(metaFilename2, "file") then
+		return MetaService.parseMeta(metaFilename2)
 	else
 		return {
 			{

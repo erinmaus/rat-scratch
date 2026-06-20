@@ -3,9 +3,9 @@ local MetaService = require("RatScratch.Services.MetaService")
 local Console = require("RatScratch.Console")
 local DownloadAllPackages = require("RatScratch.Patterns.DownloadAllPackages")
 
-local function tryAddPackage(completeMeta, meta, force)
+local function tryAddPackage(completeMeta, meta, parentMeta, force)
 	if meta and meta.url then
-		DownloadAllPackages(meta, { meta.url })
+		DownloadAllPackages(meta, { meta.url }, parentMeta)
 	end
 
 	for i = 2, #completeMeta do
@@ -40,11 +40,11 @@ local function tryAddPackage(completeMeta, meta, force)
 	table.insert(completeMeta, MetaService.clone(meta))
 end
 
-local function resolveChildDependency(completeMeta, meta, force, e)
+local function resolveChildDependency(completeMeta, meta, parentMeta, force, e)
 	Console.assert(not e[meta.name], 'package "%s" is dependent on self', meta.name)
 	e[meta.name] = true
 
-	tryAddPackage(completeMeta, meta, force)
+	tryAddPackage(completeMeta, meta, parentMeta, force)
 
 	local packagePath = PackageService.getPackagePath(meta)
 	local packageMetaPath = ("%s/.rsmeta"):format(packagePath)
@@ -66,7 +66,7 @@ local function ResolvePackageDependencies(meta, force)
 
 	local e = { meta[1].name }
 	for i = 2, #meta do
-		resolveChildDependency(completeMeta, meta[i], force, e)
+		resolveChildDependency(completeMeta, meta[i], meta[1], force, e)
 	end
 
 	return completeMeta

@@ -3,8 +3,9 @@ local FilesystemService = require("RatScratch.Services.FilesystemService")
 local MetaService = require("RatScratch.Services.MetaService")
 
 local function SavePackage(inputMeta, blob)
-	local hash = inputMeta.hash:match(".+:(.+)")
-	local packageMountPath = PackageService.saveAndMountPackage(hash, blob)
+	local hash = inputMeta.hash and inputMeta.hash:match(".+:(.+)")
+	local packageMountPath = hash and PackageService.saveAndMountPackage(hash, blob)
+		or PackageService.getPackagePath(inputMeta)
 
 	local root = inputMeta.root
 	if not root then

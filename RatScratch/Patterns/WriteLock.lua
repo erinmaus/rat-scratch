@@ -6,7 +6,7 @@ local function getSpecificDependencies(meta, otherMeta)
 
 	for i = 2, #meta do
 		Console.assert(
-			meta[i].hash and meta[i].url,
+			meta[i].url and (not meta[i].url:match("https?://") or meta[i].hash),
 			"Rat Scratch meta module meta missing values (hash and/or url): %s",
 			MetaService.serialize(meta[i]):gsub("\n", ", ")
 		)

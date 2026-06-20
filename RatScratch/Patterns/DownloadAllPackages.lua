@@ -4,7 +4,7 @@ local DownloadPackage = require("RatScratch.Patterns.DownloadPackage")
 local SavePackage = require("RatScratch.Patterns.SavePackage")
 local RegisterPackage = require("RatScratch.Patterns.RegisterPackage")
 
-local function DownloadAllPackages(meta, urls, e)
+local function DownloadAllPackages(meta, urls, parentMeta, e)
 	e = e or {}
 
 	for _, m in ipairs(e) do
@@ -16,26 +16,21 @@ local function DownloadAllPackages(meta, urls, e)
 	local modifiedMeta = MetaService.clone(meta)
 	table.insert(e, modifiedMeta)
 
-	local blob, blobHash, blobURL = DownloadPackage(modifiedMeta, urls)
+	local blob, blobHash, blobURL, blobMeta = DownloadPackage(modifiedMeta, urls, parentMeta)
+	blobMeta = SavePackage(blobMeta, blob)
 
-	modifiedMeta.url = blobURL
-	modifiedMeta.hash = blobHash
-	assert(modifiedMeta.hash)
+	local packageMeta = GetPackageMeta(blobMeta)
 
-	modifiedMeta = SavePackage(modifiedMeta, blob)
-
-	local packageMeta = GetPackageMeta(modifiedMeta)
-
-	modifiedMeta.name = packageMeta[1].name
-	modifiedMeta.version = packageMeta[1].version
-	RegisterPackage(modifiedMeta)
+	blobMeta.name = packageMeta[1].name
+	blobMeta.version = packageMeta[1].version
+	RegisterPackage(blobMeta)
 
 	for i = 2, #packageMeta do
 		local childPackageMeta = packageMeta[i]
-		DownloadAllPackages(childPackageMeta, { childPackageMeta.url }, e)
+		DownloadAllPackages(childPackageMeta, { childPackageMeta.url }, packageMeta[1], e)
 	end
 
-	return modifiedMeta
+	return blobMeta
 end
 
 return DownloadAllPackages
