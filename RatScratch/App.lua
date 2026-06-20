@@ -87,6 +87,8 @@ end
 
 function App.init(options)
 	local sourceNativePath = love.filesystem.getRealDirectory("main.lua")
+	local metaFilename = (options.meta or ".rsmeta"):match("/?([^/]*)$")
+
 	local metaRootNativePath =
 		love.filesystem.canonicalizeRealPath(FilesystemService.buildPath(options.meta or ".", ".."))
 	Console.assert(
@@ -98,6 +100,7 @@ function App.init(options)
 
 	FilesystemService.mountModuleDirectory(metaRootNativePath)
 
+	MetaService.setMetaFilename(metaFilename or ".rsmeta")
 	local meta = MetaService.parseMeta()
 
 	local libraryDirectory = MetaService.buildRelativePath(meta, meta[1]["directory.library"] or options.out or "./lib")
@@ -111,6 +114,7 @@ end
 function App.deinit(options)
 	PackageService.unmount()
 	FilesystemService.unmount()
+	MetaService.setMetaFilename()
 end
 
 function App.help(command)

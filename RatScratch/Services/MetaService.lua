@@ -2,9 +2,14 @@ local Console = require("RatScratch.Console")
 local Meta = require("rat-scratch-module.rat-scratch-module.Meta")
 
 local MetaService = {}
+MetaService.FILENAME = ".rsmeta"
+
+function MetaService.setMetaFilename(filename)
+	MetaService.FILENAME = filename or ".rsmeta"
+end
 
 function MetaService.parseMeta(filename)
-	filename = filename or "staging/module/.rsmeta"
+	filename = filename or ("staging/module/%s"):format(MetaService.FILENAME)
 
 	local data = love.filesystem.read(filename)
 	Console.assert(
@@ -56,7 +61,8 @@ function MetaService.serialize(meta)
 end
 
 function MetaService.writeMeta(meta, filename)
-	filename = filename or "staging/module/.rsmeta"
+	filename = filename or ("staging/module/%s"):format(MetaService.FILENAME)
+
 	love.filesystem.write(filename, Meta.serialize(meta))
 end
 

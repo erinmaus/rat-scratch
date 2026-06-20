@@ -231,12 +231,18 @@ local _dependencyPackageExcludedKeys = {
 local function _serialize(packages)
 	local result = {}
 	table.insert(result, _stringify(packages[1]))
-	table.insert(result, "")
+
+	if #packages > 1 then
+		table.insert(result, "")
+	end
 
 	for i = 2, #packages do
 		table.insert(result, ("[%s]"):format(packages[i].name))
 		table.insert(result, _stringify(packages[i], _dependencyPackageExcludedKeys))
-		table.insert(result, "")
+
+		if i < #packages then
+			table.insert(result, "")
+		end
 	end
 
 	return table.concat(result, "\n")
