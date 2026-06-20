@@ -48,6 +48,7 @@ function Build.perform(options)
 	end
 
 	FilesystemService.copy("Data/Template/bootstrap", "staging/build/bootstrap")
+	FilesystemService.copy("rat-scratch-module/rat-scratch-module/Meta.lua", "staging/build/bootstrap/Meta.lua")
 
 	local initSource = love.filesystem.read("Data/Template/init.lua")
 	local moduleName = lock[1]["lls.module"] or ("%s.source"):format(lock[1].name)

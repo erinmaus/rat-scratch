@@ -1,8 +1,17 @@
 local clear = require("table.clear")
+local Filesystem = require("rat-scratch-module.Filesystem")
+local Meta = require("rat-scratch-module.Meta")
+
 local RatScratchModule = {}
+RatScratchModule.Meta = require("rat-scratch-module.Meta")
 
 RatScratchModule.REGISTRY = {}
 RatScratchModule.PATHS = {}
+RatScratchModule.IS_INTIALIZED = true
+
+function RatScratchModule.initialize()
+	RatScratchModule.IS_INTIALIZED = true
+end
 
 function RatScratchModule.register(meta, moduleRequire, module)
 	local registeredModule = RatScratchModule.REGISTRY[meta.name]
@@ -145,11 +154,69 @@ function RatScratchModule.getSelfPath(path)
 	end
 
 	local pathInfo = RatScratchModule.PATHS[path]
-	if not pathInfo then
+	if pathInfo ~= nil then
+		return pathInfo and pathInfo.path or ""
+	end
+
+	local filename = path:gsub("%.", "/")
+	local possibleMeta = { { filename = ".rsmeta", directory = "" } }
+
+	local currentPath
+	for localPath in filename:gmatch("([^/]+)/?") do
+		local nextPath = currentPath and ("%s/%s"):format(currentPath, localPath) or localPath
+
+		table.insert(possibleMeta, 1, {
+			filename = ("%s/.rsmeta"):format(nextPath),
+			directory = nextPath,
+		})
+
+		table.insert(possibleMeta, 1, {
+			filename = currentPath and ("%s/%s.rsmeta"):format(currentPath, localPath)
+				or ("%s.rsmeta"):format(localPath),
+			directory = currentPath or localPath,
+		})
+
+		currentPath = nextPath
+	end
+
+	local rootSelfPath, meta
+	for _, possibleMeta in ipairs(possibleMeta) do
+		if love.filesystem.getInfo(possibleMeta.filename, "file") then
+			local packages = Meta.fromFile(possibleMeta.filename, Filesystem.read(possibleMeta.filename))
+			local package = packages and packages[1]
+
+			if package then
+				rootSelfPath = possibleMeta.directory
+				meta = package
+				break
+			end
+		end
+	end
+
+	if not (rootSelfPath and meta) then
+		RatScratchModule.PATHS[path] = false
 		return ""
 	end
 
-	return pathInfo.path
+	local selfPath
+	if meta.source then
+		local possibleSelfPath = rootSelfPath ~= "" and ("%s/%s"):format(rootSelfPath, meta.source) or meta.source
+		if love.filesystem.getInfo(possibleSelfPath, "directory") then
+			selfPath = possibleSelfPath
+		end
+	end
+
+	selfPath = selfPath or rootSelfPath
+	RatScratchModule.PATHS[path] = {
+		require = selfPath:gsub("/", "."),
+		path = selfPath,
+		meta = {
+			name = meta.name,
+			version = meta.version,
+		},
+	}
+
+	return selfPath
 end
 
 return RatScratchModule

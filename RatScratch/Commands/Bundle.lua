@@ -20,7 +20,7 @@ function Bundle.perform(arguments)
 		InstallPackage(lock[i])
 	end
 
-	AddRatScratchModule("staging/lib")
+	AddRatScratchModule("staging/lib", true)
 
 	WriteLock(lock, packageMeta)
 end

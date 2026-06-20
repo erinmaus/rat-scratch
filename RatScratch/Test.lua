@@ -80,7 +80,8 @@ local function _generateSource(dependencyName, dependency)
 		local prefix = (meta[1]["directory.library"] or "./lib"):gsub("^%.?/*", ""):gsub("/*$", ""):gsub("/", ".")
 
 		for _, child in ipairs(dependency.libs) do
-			table.insert(source, ('require("%s.%s")'):format(prefix, child))
+			local childName = child:match("(.*)@.*")
+			table.insert(source, ('require("%s.%s")'):format(prefix, childName))
 		end
 
 		table.insert(source, "")

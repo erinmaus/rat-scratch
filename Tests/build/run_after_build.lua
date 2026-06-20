@@ -17,8 +17,11 @@ love.filesystem.write(
 	[[
 		local slick = require("lib.slick")
 		local bump = require("lib.bump")
+		local module = require("lib.rat-scratch-module")
 
 		local function main()
+			local versions = module.getVersions("rat-scratch-test")
+			print(("rat-scratch-test: %s (%d)"):format(versions[1], #versions))
 			print(("slick: %s"):format(slick._VERSION))
 			print(("bump: %s"):format(bump._VERSION))
 		end
@@ -32,15 +35,12 @@ love.filesystem.write(
 love.filesystem.write(
 	"staging/test/main.lua",
 	[[
-		function love.errorhandler()
+		function love.errorhandler(e)
+			print(e)
 			os.exit(1)
 		end
 
   		local test = require "build.rat-scratch-test"
-		local module = require "build.rat-scratch-test.lib.rat-scratch-module"
-
-		local versions = module.getVersions("rat-scratch-test")
-		print(("rat-scratch-test: %s (%d)"):format(versions[1], #versions))
 
 		test.main()
 		love.event.quit()

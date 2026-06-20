@@ -47,7 +47,7 @@ local function SavePackage(inputMeta, blob)
 		end
 	end
 
-	PackageService.savePackageMeta(hash, MetaService.stringifyPackageMeta(modifiedMeta))
+	PackageService.savePackageMeta(hash, MetaService.serialize(modifiedMeta))
 
 	return modifiedMeta
 end

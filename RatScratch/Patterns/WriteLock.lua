@@ -8,7 +8,7 @@ local function getSpecificDependencies(meta, otherMeta)
 		Console.assert(
 			meta[i].hash and meta[i].url,
 			"Rat Scratch meta module meta missing values (hash and/or url): %s",
-			MetaService.stringifyPackageMeta(meta[i]):gsub("\n", ", ")
+			MetaService.serialize(meta[i]):gsub("\n", ", ")
 		)
 
 		local hasDependency = false
