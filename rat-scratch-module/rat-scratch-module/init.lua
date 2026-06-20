@@ -125,37 +125,9 @@ function RatScratchModule.getRequire(name, version)
 	return module and module.require
 end
 
-function RatScratchModule.getSelfRequire(path)
-	if not path then
-		local info = debug.getinfo(2, "S")
-		path = info and (info.source:match("@(.-)%..*$") or ""):gsub("/", ".")
-	end
-
-	if not path then
-		return ""
-	end
-
-	local pathInfo = RatScratchModule.PATHS[path]
-	if not pathInfo then
-		return ""
-	end
-
-	return pathInfo.require
-end
-
-function RatScratchModule.getSelfPath(path)
-	if not path then
-		local info = debug.getinfo(2, "S")
-		path = info and (info.source:match("@(.-)%..*$") or ""):gsub("/", ".")
-	end
-
-	if not path then
-		return ""
-	end
-
-	local pathInfo = RatScratchModule.PATHS[path]
-	if pathInfo ~= nil then
-		return pathInfo and pathInfo.path or ""
+local function _findPath(path)
+	if RatScratchModule.PATHS[path] ~= nil then
+		return RatScratchModule.PATHS[path]
 	end
 
 	local filename = path:gsub("%.", "/")
@@ -195,7 +167,7 @@ function RatScratchModule.getSelfPath(path)
 
 	if not (rootSelfPath and meta) then
 		RatScratchModule.PATHS[path] = false
-		return ""
+		return nil
 	end
 
 	local selfPath
@@ -207,8 +179,17 @@ function RatScratchModule.getSelfPath(path)
 	end
 
 	selfPath = selfPath or rootSelfPath
+
+	local requirePath = selfPath:gsub("/", ".")
+	do
+		local _, j = path:find(requirePath, 1, true)
+		if j then
+			requirePath = ("%s%s"):format(selfPath, path:sub(j + 1))
+		end
+	end
+
 	RatScratchModule.PATHS[path] = {
-		require = selfPath:gsub("/", "."),
+		require = requirePath,
 		path = selfPath,
 		meta = {
 			name = meta.name,
@@ -216,7 +197,39 @@ function RatScratchModule.getSelfPath(path)
 		},
 	}
 
-	return selfPath
+	return RatScratchModule.PATHS[path]
+end
+
+function RatScratchModule.getSelfRequire(path)
+	if not path then
+		local info = debug.getinfo(2, "S")
+		path = info and (info.source:match("@(.-)%..*$") or ""):gsub("/", ".")
+	end
+
+	if not path then
+		return ""
+	end
+
+	local pathInfo = _findPath(path)
+	return pathInfo and pathInfo.require or ""
+end
+
+function RatScratchModule.getSelfPath(path)
+	if not path then
+		local info = debug.getinfo(2, "S")
+		path = info and (info.source:match("@(.-)%..*$") or ""):gsub("/", ".")
+	end
+
+	if not path then
+		return ""
+	end
+
+	if not path then
+		return ""
+	end
+
+	local pathInfo = _findPath(path)
+	return pathInfo and pathInfo.path or ""
 end
 
 return RatScratchModule
