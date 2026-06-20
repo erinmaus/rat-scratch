@@ -1,9 +1,10 @@
 local RatScratchCommon = {}
 local RatScratchCommonMetatable = { __index = RatScratchCommon }
 
-function RatScratchCommon.new(path)
+function RatScratchCommon.new(path, meta)
 	return setmetatable({
 		path = path,
+		meta = meta,
 		packages = {},
 		warnings = {},
 		resolved = {},
@@ -58,6 +59,8 @@ local function _matchPackagePath(path, pattern, currentPackageName, currentPacka
 end
 
 function RatScratchCommon:require(require, basePackageName, path, packages)
+	self.warnings = {}
+
 	local basePackageWithName = basePackageName and packages[basePackageName] and packages[basePackageName].base
 	if not basePackageWithName or not basePackageWithName.isRSLib then
 		return package.loaded[path] or require(path)
@@ -72,9 +75,7 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 			("^%s%%.%s%%.([^.]+)%%.?(.*)"):format(
 				basePackageWithName.pattern,
 				basePackageWithName.childrenPrefixPattern or "lib"
-			),
-			packageName,
-			packageRequire
+			)
 		)
 		packageName, packageRequire = _matchPackagePath(
 			path,
@@ -88,7 +89,12 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 	local packagesWithName = packages[packageName]
 	local targetPackageWithName = packagesWithName and basePackageWithName.packages[packageName]
 
-	if not targetPackageWithName and basePackageWithName and not basePackageWithName.bundled then
+	if
+		not targetPackageWithName
+		and basePackageWithName
+		and not basePackageWithName.bundled
+		and packageName == basePackageWithName.name
+	then
 		local newPath
 		if not packageRequire then
 			newPath = ("%s.source"):format(basePackageWithName.require)
@@ -100,7 +106,14 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 	end
 
 	if not targetPackageWithName or (packageName and packageRequire and packageRequire ~= "") then
-		return package.loaded[path] or require(path), path, targetPackageWithName or basePackageWithName
+		local newPath
+		if targetPackageWithName then
+			newPath = string.format("%s.%s", targetPackageWithName.require, packageRequire)
+		else
+			newPath = path
+		end
+
+		return package.loaded[newPath] or require(newPath), newPath, targetPackageWithName or basePackageWithName
 	end
 
 	local basePackageResolutions = self.resolved[basePackageName]
@@ -115,7 +128,7 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 		local currentPackageWithName = self.packages[packageName]
 		if
 			currentPackageWithName
-			and self:isVersionMatch(currentPackageWithName.version, targetPackageWithName.version)
+			and self.meta.isVersionExactMatch(currentPackageWithName.version, targetPackageWithName.version)
 		then
 			bestPackageWithName = currentPackageWithName
 		end
@@ -124,12 +137,12 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 	-- Try exact match.
 	if not bestPackageWithName then
 		for _, namedPackage in ipairs(packagesWithName.packages) do
-			if self:isVersionMatch(namedPackage.version, targetPackageWithName.version) then
+			if self.meta.isVersionExactMatch(namedPackage.version, targetPackageWithName.version) then
 				bestPackageWithName = namedPackage
 				break
 			elseif
 				not closestPackageWithName
-				and self:isVersionMaybeMatch(namedPackage.version, targetPackageWithName.version)
+				and self.meta.isVersionMatch(namedPackage.version, targetPackageWithName.version)
 			then
 				closestPackageWithName = closestPackageWithName
 			end
@@ -216,75 +229,16 @@ function RatScratchCommon:require(require, basePackageName, path, packages)
 	return result, package.require, package
 end
 
-function RatScratchCommon:splitVersion(version)
-	if version == "*" then
-		-- "~" will always be "greater" in a string comparison than a string of numbers
-		-- we could use string.char(127) (DEL) or something but that's not always printable
-		-- needs to be UTF-8 compatible, so >127 is not possible
-		return "~", "~", "~"
-	end
-
-	local major, minor, patch = version:gsub("*", "~"):match("([%d~]+)%.([%d~]+)%.([%d~]+)")
-	self:assert(major and minor and patch, "malformed version string: %s", version)
-
-	return major, minor, patch
-end
-
-local function _isEqual(current, required)
-	if required == "~" or current == "~" then
-		return true
-	end
-
-	return current == required
-end
-
-local function _isGreater(current, required)
-	if required == "~" or current == "~" then
-		return true
-	end
-
-	return current > required
-end
-
-local function _isGreaterThanEqual(current, required)
-	return _isGreater(current, required) or _isEqual(current, required)
-end
-
 function RatScratchCommon:isVersionMatch(packageVersion, requiredVersion)
-	local packageMajor, packageMinor, packagePatch = self:splitVersion(packageVersion)
-	local requiredMajor, requiredMinor, requiredPatch = self:splitVersion(requiredVersion)
-
-	return _isEqual(packageMajor, requiredMajor)
-		and (
-			_isGreater(packageMinor, requiredMinor)
-			or (_isEqual(packageMinor, requiredMinor) or _isGreaterThanEqual(packagePatch, requiredPatch))
-		)
+	return self.meta.isVersionExactMatch(packageVersion, requiredVersion)
 end
 
 function RatScratchCommon:isVersionMaybeMatch(packageVersion, requiredVersion)
-	local packageMajor, packageMinor, packagePatch = self:splitVersion(packageVersion)
-	local requiredMajor, requiredMinor, requiredPatch = self:splitVersion(requiredVersion)
-
-	return _isGreaterThanEqual(packageMajor, requiredMajor)
-		and (
-			_isGreater(packageMinor, requiredMinor)
-			or (_isEqual(packageMinor, requiredMinor) or _isGreaterThanEqual(packagePatch, requiredPatch))
-		)
+	return self.meta.isVersionMatch(packageVersion, requiredVersion)
 end
 
 function RatScratchCommon:compareVersion(a, b)
-	local aMajor, aMinor, aPatch = self:splitVersion(a)
-	local bMajor, bMinor, bPatch = self:splitVersion(b)
-
-	if aMajor == bMajor then
-		if aMinor == bMinor then
-			return aPatch > bPatch
-		end
-
-		return aMinor > bMinor
-	end
-
-	return aMajor > bMajor
+	return self.meta.versionLess(a, b)
 end
 
 function RatScratchCommon:processPackages(packages)
@@ -396,58 +350,8 @@ function RatScratchCommon:processPackages(packages)
 	return packagesByName
 end
 
-function RatScratchCommon:parseTOML(fileData)
-	if fileData == nil then
-		self:assert("missing Rat Scratch meta TOML")
-	end
-
-	local packages = {}
-	local currentPackage = {}
-	local lineNumber = 0
-
-	local function validatePackage()
-		self:assert(
-			currentPackage.version and currentPackage.name,
-			"line %d: expected current package to have version and name",
-			lineNumber - 1
-		)
-
-		for _, otherPackage in ipairs(packages) do
-			self:assert(
-				otherPackage.name ~= currentPackage.name,
-				'line %d: duplicate package "%s"',
-				currentPackage.name
-			)
-		end
-	end
-
-	for line in fileData:gmatch("([^\r\n]*)\r?\n?") do
-		lineNumber = lineNumber + 1
-
-		line = line:gsub("^%s*(.*)%s$", "%1"):gsub("(.-)#.*$", "%1")
-		local key, value = line:match("%s*(.-)%s*=%s*(.*)%s*")
-		local nextPackageName = line:match("%[%s*([%w][%w%d+-]*)%s*]")
-
-		if key and value then
-			currentPackage[key] = value
-		elseif nextPackageName then
-			validatePackage()
-
-			table.insert(packages, currentPackage)
-			currentPackage = { name = nextPackageName }
-		else
-			self:assert(
-				#line == 0,
-				"line %d: malformed Rat Scratch meta TOML line, could not parse; expected key/value or package name",
-				lineNumber
-			)
-		end
-	end
-
-	validatePackage()
-
-	table.insert(packages, currentPackage)
-	return packages
+function RatScratchCommon:parseTOML(data)
+	return self.meta.parse(data)
 end
 
 return RatScratchCommon

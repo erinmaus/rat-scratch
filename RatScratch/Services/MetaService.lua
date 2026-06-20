@@ -1,29 +1,31 @@
-local Common = require("Data.Template.bootstrap.Common")
 local Console = require("RatScratch.Console")
+local Meta = require("rat-scratch-module.rat-scratch-module.Meta")
+
 local MetaService = {}
 
 function MetaService.parseMeta(filename)
 	filename = filename or "staging/module/.rsmeta"
+
+	local data = love.filesystem.read(filename)
 	Console.assert(
 		love.filesystem.getInfo(filename, "file"),
 		'Rat Scratch module meta does not exist at path "%s"',
 		filename
 	)
 
-	local metaFile = love.filesystem.read(filename)
-	return Common.new("staging/module"):parseTOML(metaFile)
+	return Meta.fromFile(filename, data)
 end
 
 function MetaService.isCompatible(currentMeta, pendingMeta)
-	return Common.new("staging/module"):isVersionMatch(currentMeta.version, pendingMeta.version)
+	return Meta.isVersionExactMatch(currentMeta.version, pendingMeta.version)
 end
 
 function MetaService.isMaybeCompatible(currentMeta, pendingMeta)
-	return Common.new("staging/module"):isVersionMaybeMatch(currentMeta.version, pendingMeta.version)
+	return Meta.isVersionMatch(currentMeta.version, pendingMeta.version)
 end
 
 function MetaService.isNewer(currentMeta, pendingMeta)
-	return Common.new("staging/module"):compareVersion(currentMeta.version, pendingMeta.version)
+	return Meta.compareVersion(currentMeta.version, pendingMeta.version) < 0
 end
 
 function MetaService.clone(meta)
@@ -49,51 +51,17 @@ function MetaService.clone(meta)
 	return results
 end
 
-function MetaService.stringifyPackageMeta(package, excludedKeys)
-	local keyValues = {}
-
-	for key, value in pairs(package) do
-		if not (excludedKeys and excludedKeys[key]) then
-			table.insert(keyValues, { key, value })
-		end
-	end
-
-	table.sort(keyValues, function(a, b)
-		return a[1] < b[1]
-	end)
-
-	local result = {}
-	for _, keyValuePair in ipairs(keyValues) do
-		local key, value = unpack(keyValuePair)
-		table.insert(result, ("%s = %s"):format(key, value))
-	end
-
-	return table.concat(result, "\n")
+function MetaService.serialize(meta)
+	return Meta.serialize(meta)
 end
 
 function MetaService.writeMeta(meta, filename)
 	filename = filename or "staging/module/.rsmeta"
-
-	local result = {}
-	table.insert(result, MetaService.stringifyPackageMeta(meta[1]))
-	table.insert(result, "")
-
-	for i = 2, #meta do
-		table.insert(result, ("[%s]"):format(meta[i].name))
-		table.insert(result, MetaService.stringifyPackageMeta(meta[i], { name = true }))
-		table.insert(result, "")
-	end
-
-	local stringifiedMeta = table.concat(result, "\n")
-	love.filesystem.write(filename, stringifiedMeta)
+	love.filesystem.write(filename, Meta.serialize(meta))
 end
 
 function MetaService.buildRelativePath(meta, path)
-	local result = path:gsub("%$%{(.-)%}", function(value)
-		return meta[1][value]
-	end)
-
-	return result
+	return Meta.buildPath(meta[1], path)
 end
 
 return MetaService
