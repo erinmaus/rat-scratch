@@ -62,7 +62,7 @@ local function load()
 
 	setfenv(0, setmetatable(g, patchedG))
 
-	rsModule = common:require(require, getBasePackage(1), "lib.rat-scratch-module", packages)
+	rsModule = common:require(require, getBasePackage(1), "rat-scratch-module", packages)
 	rsModule.initialize()
 
 	local result, resolvedPath, package = common:require(require, getBasePackage(1), REQUIRE_PACKAGE_NAME, packages)

@@ -186,15 +186,7 @@ local function _findPath(path)
 		return nil
 	end
 
-	local selfPath
-	if meta[1].source then
-		local possibleSelfPath = rootSelfPath ~= "" and ("%s/%s"):format(rootSelfPath, meta.source) or meta[1].source
-		if possibleSelfPath and love.filesystem.getInfo(possibleSelfPath, "directory") then
-			selfPath = possibleSelfPath
-		end
-	end
-
-	selfPath = selfPath or rootSelfPath
+	local selfPath = rootSelfPath
 
 	local requirePath = selfPath:gsub("/", ".")
 	local targetMeta
@@ -217,10 +209,18 @@ local function _findPath(path)
 						break
 					end
 				end
+			else
+				if meta[1].source then
+					local possibleSelfPath = rootSelfPath ~= "" and ("%s/%s"):format(rootSelfPath, meta.source)
+						or meta[1].source
+					if possibleSelfPath and love.filesystem.getInfo(possibleSelfPath, "directory") then
+						selfPath = possibleSelfPath
+					end
+				end
 			end
 		end
 
-		do
+		if not targetMeta then
 			local _, j = path:find(requirePath, 1, true)
 			if j then
 				requirePath = ("%s%s"):format(selfPath:gsub("/", "."), path:sub(j + 1))
