@@ -92,12 +92,32 @@ function PackageService.registerPackage(meta, root, hash)
 	PackageService.REGISTERED[nameVersionKey] = hash
 end
 
-function PackageService.isRegistered(meta)
-	local nameVersionKey = ("%s@%s"):format(meta.name, meta.version)
+function PackageService.isRegistered(metaOrHash)
+	if type(metaOrHash) == "string" then
+		return PackageService.MOUNTED[metaOrHash] ~= nil
+	end
+
+	local nameVersionKey = ("%s@%s"):format(metaOrHash.name, metaOrHash.version)
 	return PackageService.REGISTERED[nameVersionKey] ~= nil
 end
 
-function PackageService.getPackagePath(meta)
+function PackageService.getPackageHash(meta)
+	Console.assert(PackageService.isRegistered(meta), 'package "%s@%s" is not registered', meta.name, meta.version)
+
+	local nameVersionKey = ("%s@%s"):format(meta.name, meta.version)
+	local hash = PackageService.REGISTERED[nameVersionKey]
+	return hash
+end
+
+function PackageService.getPackagePath(metaOrHash)
+	if type(metaOrHash) == "string" then
+		local hash = metaOrHash
+
+		Console.assert(PackageService.MOUNTED[hash], "package with hash is not registered: %s", metaOrHash)
+		return PackageService.MOUNTED[hash]
+	end
+
+	local meta = metaOrHash
 	Console.assert(PackageService.isRegistered(meta), 'package "%s@%s" is not registered', meta.name, meta.version)
 
 	local nameVersionKey = ("%s@%s"):format(meta.name, meta.version)

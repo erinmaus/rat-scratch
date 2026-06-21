@@ -73,7 +73,7 @@ function Test.stop()
 	isReady = false
 end
 
-local function _generateSource(dependencyName, dependency)
+function Test.generateSource(dependencyName, dependency)
 	local source = {}
 	if dependency and dependency.libs then
 		local meta = MetaService.parseMeta("staging/test/.rsmeta")
@@ -87,7 +87,7 @@ local function _generateSource(dependencyName, dependency)
 		table.insert(source, "")
 	end
 
-	table.insert(source, ('return function() print("hello from", %q) end'):format(dependencyName))
+	table.insert(source, ('return function() print(("%%s: %%s"):format("hello from", %q)) end'):format(dependencyName))
 
 	return table.concat(source, "\n")
 end
@@ -104,7 +104,7 @@ local function _add(dependencies, dependency, e)
 	local sourceDirectory = ("%s/%s"):format(filename, name)
 	love.filesystem.createDirectory(sourceDirectory)
 
-	love.filesystem.write(("%s/init.lua"):format(sourceDirectory), _generateSource(dependency, dependencyInfo))
+	love.filesystem.write(("%s/init.lua"):format(sourceDirectory), Test.generateSource(dependency, dependencyInfo))
 
 	local meta = ("name = %s\nversion = %s\nsource = %s\n"):format(name, version, name)
 	love.filesystem.write(metaFilename, meta)
@@ -254,6 +254,31 @@ function Test.hasPackages(meta, packages)
 	end
 
 	return success
+end
+
+function Test.hasOutput(lines)
+	local file = io.popen("love ./rat-scratch-test", "r")
+	assert(file, "could not run `love ./rat-scratch-test`")
+
+	local outputLines = {}
+	do
+		local outputLine
+		repeat
+			outputLine = file:read("*l")
+			table.insert(outputLines, outputLine)
+		until not outputLine
+	end
+
+	for i, inputLine in ipairs(lines) do
+		local outputLine = outputLines[i]
+
+		Console.assert(
+			inputLine == outputLine,
+			'expected "%s", got: %s',
+			inputLine,
+			table.concat(outputLines, "\n", i, #outputLines)
+		)
+	end
 end
 
 return Test

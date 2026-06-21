@@ -4,34 +4,56 @@ local json = require("lib.json")
 local MetaService = require("RatScratch.Services.MetaService")
 local PackageService = require("RatScratch.Services.PackageService")
 
-local function isPackageWithHashDownloaded(hash)
-	local inputHash = hash:match(".+:(.+)")
-	local existingPackagePath = ("staging/lib/.tmp/%s.zip"):format(inputHash)
-	local existingPackageMetaPath = ("staging/lib/.tmp/%s.rsmeta"):format(inputHash)
-	if love.filesystem.getInfo(existingPackagePath, "file") then
-		local hashAlgorithm = hash:match("(.+):")
-
-		local fileData = love.filesystem.read(existingPackagePath)
-		local fileHash = love.data.encode("string", "hex", love.data.hash("string", hashAlgorithm, fileData))
-
-		if fileHash == inputHash then
-			return true, MetaService.parseMeta(existingPackageMetaPath)[1]
-		end
+local function isPackageWithHashDownloaded(inputMeta)
+	local inputHash = inputMeta.hash and inputMeta.hash:match(".+:(.+)")
+		or PackageService.isRegistered(inputMeta) and PackageService.getPackageHash(inputMeta)
+	if not inputHash then
+		return false, nil
 	end
 
-	return false
+	if not PackageService.isRegistered(inputHash) then
+		return false, nil
+	end
+
+	local existingPackagePath = ("staging/lib/.tmp/%s.zip"):format(inputHash)
+
+	if not love.filesystem.getInfo(existingPackagePath, "file") then
+		return false, inputMeta
+	end
+
+	local rootPath = PackageService.getPackagePath(inputHash)
+	local metaFilename1 = ("%s/%s.rsmeta"):format(rootPath, inputMeta.name)
+	local metaFilename2 = ("staging/lib/.tmp/%s.rsmeta"):format(inputHash)
+
+	local resultMeta
+	if love.filesystem.getInfo(metaFilename1, "file") then
+		resultMeta = MetaService.parseMeta(metaFilename1)[1]
+		resultMeta.url = inputMeta.url
+		resultMeta.hash = inputMeta.hash
+
+		PackageService.registerPackage(resultMeta, rootPath, inputHash)
+	end
+
+	if love.filesystem.getInfo(metaFilename2, "file") then
+		local baseMeta = MetaService.parseMeta(metaFilename2)[1]
+		resultMeta = resultMeta or baseMeta
+		resultMeta.url = baseMeta.url
+	end
+
+	return not not resultMeta, resultMeta
 end
 
 local function isPackageDownloaded(inputMeta)
-	if inputMeta.hash then
-		return isPackageWithHashDownloaded(inputMeta.hash)
+	local success, resultMeta = isPackageWithHashDownloaded(inputMeta)
+	if success then
+		return resultMeta
 	end
 
 	local meta = MetaService.parseMeta()
 	for i = 2, #meta do
 		local childMeta = meta[i]
 		if childMeta.name == inputMeta.name and childMeta.version == inputMeta.version and childMeta.hash then
-			return isPackageWithHashDownloaded(childMeta.hash), childMeta
+			return isPackageWithHashDownloaded(childMeta)
 		end
 	end
 
@@ -110,13 +132,22 @@ local function DownloadPackage(inputMeta, urls, parentMeta, headers)
 			downloadedMeta.version,
 			downloadedMeta.url
 		)
-		return true, downloadedMeta.hash, downloadedMeta.url
+
+		return true, downloadedMeta.hash, downloadedMeta.url, downloadedMeta
 	end
 
 	local blob, blobHash, blobURL, blobMeta
 	for _, url in ipairs(urls) do
 		if not url:match("https?://") and url:match("(.*)%.rsmeta") and parentMeta then
 			local rootPath = PackageService.getPackagePath(parentMeta)
+			local hash = PackageService.getPackageHash(parentMeta)
+
+			local downloadedMeta
+			local downloadedMetaFilename = ("staging/lib/.tmp/%s.rsmeta"):format(hash)
+			if love.filesystem.getInfo(downloadedMetaFilename, "file") then
+				downloadedMeta = MetaService.parseMeta(downloadedMetaFilename)[1]
+			end
+
 			Console.assert(
 				rootPath,
 				"could not find path for parent package %s@%s",
@@ -125,9 +156,9 @@ local function DownloadPackage(inputMeta, urls, parentMeta, headers)
 			)
 
 			blobMeta = MetaService.clone(inputMeta)
-			blobMeta.url = parentMeta.url or url
-			blobMeta.hash = parentMeta.hash
-			blobMeta.root = parentMeta.root
+			blobMeta.url = downloadedMeta and downloadedMeta.url or parentMeta.url or url
+			blobMeta.hash = downloadedMeta and downloadedMeta.hash or hash
+			blobMeta.root = downloadedMeta and downloadedMeta.root or parentMeta.root
 
 			local rootMetaPath = ("%s/%s"):format(rootPath, url)
 			local childMeta = MetaService.parseMeta(rootMetaPath)[1]
@@ -139,7 +170,7 @@ local function DownloadPackage(inputMeta, urls, parentMeta, headers)
 			blobHash = parentMeta.hash
 			blobURL = url
 
-			PackageService.registerPackage(blobMeta, rootPath, ("local::%s@%s"):format(blobMeta.name, blobMeta.version))
+			PackageService.registerPackage(blobMeta, rootPath, hash)
 			break
 		else
 			blob, blobHash, blobURL = downloadPackage(inputMeta, url, headers)
@@ -152,7 +183,7 @@ local function DownloadPackage(inputMeta, urls, parentMeta, headers)
 		end
 	end
 
-	return blob, blobHash, blobURL, blobMeta
+	return blob, blobHash, blobURL, blobMeta or MetaService.clone(inputMeta)
 end
 
 return DownloadPackage

@@ -6,6 +6,7 @@ local ResolvePackageDependencies = require("RatScratch.Patterns.ResolvePackageDe
 local AddPackage = require("RatScratch.Patterns.AddPackage")
 local InstallPackage = require("RatScratch.Patterns.InstallPackage")
 local WriteLock = require("RatScratch.Patterns.WriteLock")
+local ValidateLock = require("RatScratch.Patterns.ValidateLock")
 local MetaService = require("RatScratch.Services.MetaService")
 
 local Add = {}
@@ -92,6 +93,7 @@ function Add.perform(options, inputs)
 		InstallPackage(lock[i])
 	end
 
+	ValidateLock(lock)
 	WriteLock(lock, packageMeta)
 end
 

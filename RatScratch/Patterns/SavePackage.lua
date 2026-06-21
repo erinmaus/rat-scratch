@@ -37,10 +37,17 @@ local function SavePackage(inputMeta, blob)
 	modifiedMeta.root = root
 
 	local rootPath = PackageService.getRootPath(modifiedMeta, hash)
-	local packageMetaFilename = ("%s/.rsmeta"):format(rootPath)
-	if love.filesystem.getInfo(packageMetaFilename, "file") then
-		local packageMeta = MetaService.parseMeta(packageMetaFilename)
+	local packageMetaFilename1 = ("%s/.rsmeta"):format(rootPath)
+	local packageMetaFilename2 = ("%s/%s.rsmeta"):format(rootPath, modifiedMeta.name)
 
+	local packageMeta
+	if love.filesystem.getInfo(packageMetaFilename1, "file") then
+		packageMeta = MetaService.parseMeta(packageMetaFilename1)
+	elseif love.filesystem.getInfo(packageMetaFilename2, "file") then
+		packageMeta = MetaService.parseMeta(packageMetaFilename2)
+	end
+
+	if packageMeta then
 		for key, value in pairs(packageMeta[1]) do
 			if not modifiedMeta[key] then
 				modifiedMeta[key] = value
@@ -48,7 +55,9 @@ local function SavePackage(inputMeta, blob)
 		end
 	end
 
-	PackageService.savePackageMeta(hash, MetaService.serialize(modifiedMeta))
+	if hash then
+		PackageService.savePackageMeta(hash, MetaService.serialize(modifiedMeta))
+	end
 
 	return modifiedMeta
 end

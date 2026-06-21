@@ -7,10 +7,19 @@ RatScratchModule.Meta = require("rat-scratch-module.Meta")
 
 RatScratchModule.REGISTRY = {}
 RatScratchModule.PATHS = {}
+RatScratchModule.LIBRARIES = {}
 RatScratchModule.IS_INTIALIZED = true
 
 function RatScratchModule.initialize()
 	RatScratchModule.IS_INTIALIZED = true
+end
+
+local function _compareMeta(a, b)
+	if a.name == b.name then
+		return Meta.versionLess(a.version, b.version)
+	end
+
+	return a.name < b.name
 end
 
 function RatScratchModule.register(meta, moduleRequire, module)
@@ -35,6 +44,9 @@ function RatScratchModule.register(meta, moduleRequire, module)
 			path = moduleRequire:gsub("%.", "/"),
 			warnings = {},
 		}
+
+		table.insert(RatScratchModule.LIBRARIES, meta)
+		table.sort(RatScratchModule.LIBRARIES, _compareMeta)
 	end
 end
 
@@ -68,6 +80,10 @@ function RatScratchModule.addWarnings(meta, warnings)
 			table.insert(module.warnings, warning)
 		end
 	end
+end
+
+function RatScratchModule.iterate()
+	return ipairs(RatScratchModule.LIBRARIES)
 end
 
 function RatScratchModule.getWarnings(name, version, result)

@@ -26,7 +26,8 @@ love.filesystem.write(
 love.filesystem.write(
 	"staging/test/main.lua",
 	[[
-		function love.errorhandler()
+		function love.errorhandler(e)
+			print(e)
 			os.exit(1)
 		end
 
@@ -53,7 +54,7 @@ love.filesystem.write(
 	]]
 )
 
-local file = io.popen("love ./rat-scratch-test")
-assert(file)
-assert(file:read("*l") == "path (no arg): source")
-assert(file:read("*l") == "path (arg): source")
+Test.hasOutput({
+	"path (no arg): source",
+	"path (arg): source",
+})

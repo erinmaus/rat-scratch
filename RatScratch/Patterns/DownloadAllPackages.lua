@@ -16,7 +16,7 @@ local function DownloadAllPackages(meta, urls, parentMeta, e)
 	local modifiedMeta = MetaService.clone(meta)
 	table.insert(e, modifiedMeta)
 
-	local blob, blobHash, blobURL, blobMeta = DownloadPackage(modifiedMeta, urls, parentMeta)
+	local blob, _, _, blobMeta = DownloadPackage(modifiedMeta, urls, parentMeta)
 	blobMeta = SavePackage(blobMeta, blob)
 
 	local packageMeta = GetPackageMeta(blobMeta)
