@@ -4,6 +4,7 @@ local ResolvePackageDependencies = require("RatScratch.Patterns.ResolvePackageDe
 local InstallPackage = require("RatScratch.Patterns.InstallPackage")
 local WriteLock = require("RatScratch.Patterns.WriteLock")
 local AddRatScratchModule = require("RatScratch.Patterns.AddRatScratchModule")
+local PrepareBundleLock = require("RatScratch.Patterns.PrepareBundleLock")
 local Bundle = {}
 
 Bundle.OPTIONS = {
@@ -22,7 +23,8 @@ function Bundle.perform(arguments)
 
 	AddRatScratchModule("staging/lib", true)
 
-	WriteLock(lock, packageMeta)
+	local finalLock = PrepareBundleLock(lock, packageMeta)
+	WriteLock(finalLock, packageMeta)
 end
 
 return Bundle

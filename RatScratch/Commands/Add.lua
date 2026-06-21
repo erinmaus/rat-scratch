@@ -8,6 +8,7 @@ local InstallPackage = require("RatScratch.Patterns.InstallPackage")
 local WriteLock = require("RatScratch.Patterns.WriteLock")
 local ValidateLock = require("RatScratch.Patterns.ValidateLock")
 local MetaService = require("RatScratch.Services.MetaService")
+local PrepareBundleLock = require("RatScratch.Patterns.PrepareBundleLock")
 
 local Add = {}
 
@@ -93,32 +94,9 @@ function Add.perform(options, inputs)
 		InstallPackage(lock[i])
 	end
 
-	for i = 2, #lock do
-		local lockMeta = lock[i]
-
-		local childMeta
-		if modifiedMeta.name == lockMeta.name then
-			childMeta = MetaService.clone(modifiedMeta)
-			childMeta.version = version or "*"
-		else
-			for j = 2, #parentMeta do
-				if parentMeta[j].name == lockMeta.name then
-					childMeta = parentMeta[j]
-					break
-				end
-			end
-		end
-
-		if childMeta and childMeta.url:match("(.*).rsmeta") then
-			local pendingLockMeta = MetaService.clone(lockMeta)
-			pendingLockMeta.version = childMeta.version
-
-			lock[i] = pendingLockMeta
-		end
-	end
-
-	ValidateLock(lock)
-	WriteLock(lock, packageMeta)
+	local finalLock = PrepareBundleLock(lock, packageMeta)
+	ValidateLock(finalLock)
+	WriteLock(finalLock, packageMeta)
 end
 
 return Add
