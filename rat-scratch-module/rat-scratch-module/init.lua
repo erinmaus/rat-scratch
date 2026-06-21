@@ -7,10 +7,19 @@ RatScratchModule.Meta = require("rat-scratch-module.Meta")
 
 RatScratchModule.REGISTRY = {}
 RatScratchModule.PATHS = {}
+RatScratchModule.LIBRARIES = {}
 RatScratchModule.IS_INTIALIZED = true
 
 function RatScratchModule.initialize()
 	RatScratchModule.IS_INTIALIZED = true
+end
+
+local function _compareMeta(a, b)
+	if a.name == b.name then
+		return Meta.versionLess(a.version, b.version)
+	end
+
+	return a.name < b.name
 end
 
 function RatScratchModule.register(meta, moduleRequire, module)
@@ -35,14 +44,17 @@ function RatScratchModule.register(meta, moduleRequire, module)
 			path = moduleRequire:gsub("%.", "/"),
 			warnings = {},
 		}
+
+		table.insert(RatScratchModule.LIBRARIES, meta)
+		table.sort(RatScratchModule.LIBRARIES, _compareMeta)
 	end
 end
 
 function RatScratchModule.addRequireScope(localRequire, moduleRequire, meta)
 	if RatScratchModule.PATHS[localRequire] then
 		local path = RatScratchModule.PATHS[localRequire]
-		assert(path.require == moduleRequire, "import mis-match")
-		assert(path.meta.name == meta.name and path.meta.version == meta.version, "import mis-match")
+		assert(path.require == moduleRequire, "import mismatch")
+		assert(path.meta.name == meta.name and path.meta.version == meta.version, "import mismatch")
 
 		return
 	end
@@ -68,6 +80,10 @@ function RatScratchModule.addWarnings(meta, warnings)
 			table.insert(module.warnings, warning)
 		end
 	end
+end
+
+function RatScratchModule.iterate()
+	return ipairs(RatScratchModule.LIBRARIES)
 end
 
 function RatScratchModule.getWarnings(name, version, result)
@@ -125,37 +141,9 @@ function RatScratchModule.getRequire(name, version)
 	return module and module.require
 end
 
-function RatScratchModule.getSelfRequire(path)
-	if not path then
-		local info = debug.getinfo(2, "S")
-		path = info and (info.source:match("@(.-)%..*$") or ""):gsub("/", ".")
-	end
-
-	if not path then
-		return ""
-	end
-
-	local pathInfo = RatScratchModule.PATHS[path]
-	if not pathInfo then
-		return ""
-	end
-
-	return pathInfo.require
-end
-
-function RatScratchModule.getSelfPath(path)
-	if not path then
-		local info = debug.getinfo(2, "S")
-		path = info and (info.source:match("@(.-)%..*$") or ""):gsub("/", ".")
-	end
-
-	if not path then
-		return ""
-	end
-
-	local pathInfo = RatScratchModule.PATHS[path]
-	if pathInfo ~= nil then
-		return pathInfo and pathInfo.path or ""
+local function _findPath(path)
+	if RatScratchModule.PATHS[path] ~= nil then
+		return RatScratchModule.PATHS[path]
 	end
 
 	local filename = path:gsub("%.", "/")
@@ -187,7 +175,7 @@ function RatScratchModule.getSelfPath(path)
 
 			if package then
 				rootSelfPath = possibleMeta.directory
-				meta = package
+				meta = packages
 				break
 			end
 		end
@@ -195,28 +183,94 @@ function RatScratchModule.getSelfPath(path)
 
 	if not (rootSelfPath and meta) then
 		RatScratchModule.PATHS[path] = false
-		return ""
+		return nil
 	end
 
 	local selfPath
-	if meta.source then
-		local possibleSelfPath = rootSelfPath ~= "" and ("%s/%s"):format(rootSelfPath, meta.source) or meta.source
-		if love.filesystem.getInfo(possibleSelfPath, "directory") then
+	if meta[1].source then
+		local possibleSelfPath = rootSelfPath ~= "" and ("%s/%s"):format(rootSelfPath, meta.source) or meta[1].source
+		if possibleSelfPath and love.filesystem.getInfo(possibleSelfPath, "directory") then
 			selfPath = possibleSelfPath
 		end
 	end
 
 	selfPath = selfPath or rootSelfPath
+
+	local requirePath = selfPath:gsub("/", ".")
+	local targetMeta
+	do
+		local lib = meta[1]["directory.library"] or "./lib"
+		lib = lib:gsub("^%./", ""):gsub("/", ".")
+
+		local libRequirePath = ("%s.%s"):format(requirePath, lib)
+		do
+			local _, j = path:find(libRequirePath, 1, true)
+
+			if j then
+				local packageName = path:sub(j + 1):match("%.?([^%.]*)")
+
+				requirePath = ("%s.%s"):format(libRequirePath, packageName)
+
+				for i = 2, #meta do
+					if meta[i].name == packageName then
+						targetMeta = meta[i]
+						break
+					end
+				end
+			end
+		end
+
+		do
+			local _, j = path:find(requirePath, 1, true)
+			if j then
+				requirePath = ("%s%s"):format(selfPath:gsub("/", "."), path:sub(j + 1))
+			end
+		end
+	end
+
+	targetMeta = targetMeta or meta[1]
 	RatScratchModule.PATHS[path] = {
-		require = selfPath:gsub("/", "."),
+		require = requirePath,
 		path = selfPath,
 		meta = {
-			name = meta.name,
-			version = meta.version,
+			name = targetMeta.name,
+			version = targetMeta.version,
 		},
 	}
 
-	return selfPath
+	return RatScratchModule.PATHS[path]
+end
+
+function RatScratchModule.getSelfRequire(path)
+	if not path then
+		local info = debug.getinfo(2, "S")
+		path = info and (info.source:match("@(.-)%..*$") or ""):gsub("/", ".")
+	end
+
+	if not path then
+		return ""
+	end
+
+	local pathInfo = _findPath(path)
+	return pathInfo and pathInfo.require or ""
+end
+
+function RatScratchModule.getSelfPath(path)
+	if not path then
+		local info = debug.getinfo(2, "S")
+		path = info and (info.source:match("@(.-)%..*$") or ""):gsub("/", ".")
+	end
+
+	if not path then
+		return ""
+	end
+
+	if not path then
+		return ""
+	end
+
+	local pathInfo = _findPath(path)
+	return pathInfo and pathInfo.path or ""
 end
 
 return RatScratchModule

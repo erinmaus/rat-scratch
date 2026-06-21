@@ -3,15 +3,15 @@ local MetaService = require("RatScratch.Services.MetaService")
 local Console = require("RatScratch.Console")
 local DownloadAllPackages = require("RatScratch.Patterns.DownloadAllPackages")
 
-local function tryAddPackage(completeMeta, meta, force)
-	if meta and meta.url then
-		DownloadAllPackages(meta, { meta.url })
+local function tryAddPackage(completeMeta, meta, parentMeta, force)
+	if meta.url then
+		meta = DownloadAllPackages(meta, { meta.url }, parentMeta)
 	end
 
 	for i = 2, #completeMeta do
 		local otherMeta = completeMeta[i]
 		if otherMeta.name == meta.name then
-			if MetaService.isNewer(meta, otherMeta) then
+			if otherMeta.version == "*" or MetaService.isNewer(meta, otherMeta) then
 				if not MetaService.isCompatible(meta, otherMeta) then
 					if force then
 						Console.warn(
@@ -33,25 +33,34 @@ local function tryAddPackage(completeMeta, meta, force)
 				completeMeta[i] = MetaService.clone(meta)
 			end
 
-			return
+			return meta
 		end
 	end
 
 	table.insert(completeMeta, MetaService.clone(meta))
+	return meta
 end
 
-local function resolveChildDependency(completeMeta, meta, force, e)
+local function resolveChildDependency(completeMeta, meta, parentMeta, force, e)
 	Console.assert(not e[meta.name], 'package "%s" is dependent on self', meta.name)
 	e[meta.name] = true
 
-	tryAddPackage(completeMeta, meta, force)
+	meta = tryAddPackage(completeMeta, meta, parentMeta, force) or meta
 
 	local packagePath = PackageService.getPackagePath(meta)
-	local packageMetaPath = ("%s/.rsmeta"):format(packagePath)
-	if love.filesystem.getInfo(packageMetaPath) then
-		local packageMeta = MetaService.parseMeta(packageMetaPath)
+	local packageMetaPath1 = ("%s/%s.rsmeta"):format(packagePath, meta.name)
+	local packageMetaPath2 = ("%s/.rsmeta"):format(packagePath)
+
+	local packageMeta
+	if love.filesystem.getInfo(packageMetaPath1, "file") then
+		packageMeta = MetaService.parseMeta(packageMetaPath1)
+	elseif love.filesystem.getInfo(packageMetaPath2, "file") then
+		packageMeta = MetaService.parseMeta(packageMetaPath2)
+	end
+
+	if packageMeta then
 		for i = 2, #packageMeta do
-			resolveChildDependency(completeMeta, packageMeta[i], force, e)
+			resolveChildDependency(completeMeta, packageMeta[i], packageMeta[1], force, e)
 		end
 	end
 
@@ -66,7 +75,7 @@ local function ResolvePackageDependencies(meta, force)
 
 	local e = { meta[1].name }
 	for i = 2, #meta do
-		resolveChildDependency(completeMeta, meta[i], force, e)
+		resolveChildDependency(completeMeta, meta[i], meta[1], force, e)
 	end
 
 	return completeMeta

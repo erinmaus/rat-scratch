@@ -6,6 +6,8 @@ local ResolvePackageDependencies = require("RatScratch.Patterns.ResolvePackageDe
 local AddPackage = require("RatScratch.Patterns.AddPackage")
 local InstallPackage = require("RatScratch.Patterns.InstallPackage")
 local WriteLock = require("RatScratch.Patterns.WriteLock")
+local ValidateLock = require("RatScratch.Patterns.ValidateLock")
+local MetaService = require("RatScratch.Services.MetaService")
 
 local Add = {}
 
@@ -27,7 +29,7 @@ function Add.perform(options, inputs)
 	local version = options.version or url:match("(%d+%.%d+%.%d+)")
 
 	Console.assert(
-		options.github or url:match("^https://") or options.hash,
+		options.github or not (url:match("^http://") and not options.hash),
 		"hash not provided and using insecure 'http' protocol; must provide hash manually"
 	)
 
@@ -78,7 +80,8 @@ function Add.perform(options, inputs)
 		source = options.source,
 	}
 
-	local modifiedMeta = DownloadAllPackages(pendingMeta, urls)
+	local parentMeta = MetaService.parseMeta()
+	local modifiedMeta = DownloadAllPackages(pendingMeta, urls, parentMeta[1])
 
 	Console.assert(modifiedMeta.name, "could not determine package name: %s", url)
 	Console.assert(modifiedMeta.version, "could not determine package version: %s", url)
@@ -90,6 +93,31 @@ function Add.perform(options, inputs)
 		InstallPackage(lock[i])
 	end
 
+	for i = 2, #lock do
+		local lockMeta = lock[i]
+
+		local childMeta
+		if modifiedMeta.name == lockMeta.name then
+			childMeta = MetaService.clone(modifiedMeta)
+			childMeta.version = version or "*"
+		else
+			for j = 2, #parentMeta do
+				if parentMeta[j].name == lockMeta.name then
+					childMeta = parentMeta[j]
+					break
+				end
+			end
+		end
+
+		if childMeta and childMeta.url:match("(.*).rsmeta") then
+			local pendingLockMeta = MetaService.clone(lockMeta)
+			pendingLockMeta.version = childMeta.version
+
+			lock[i] = pendingLockMeta
+		end
+	end
+
+	ValidateLock(lock)
 	WriteLock(lock, packageMeta)
 end
 

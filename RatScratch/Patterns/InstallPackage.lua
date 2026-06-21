@@ -10,10 +10,10 @@ local function InstallPackage(meta)
 	local otherPackageMetaPath = meta.name and ("%s/%s.rsmeta"):format(packagePath, meta.name)
 
 	local packageMeta
-	if love.filesystem.getInfo(packageMetaPath, "file") then
-		packageMeta = MetaService.parseMeta(packageMetaPath)[1]
-	elseif otherPackageMetaPath and love.filesystem.getInfo(otherPackageMetaPath) then
+	if otherPackageMetaPath and love.filesystem.getInfo(otherPackageMetaPath) then
 		packageMeta = MetaService.parseMeta(otherPackageMetaPath)[1]
+	elseif love.filesystem.getInfo(packageMetaPath, "file") then
+		packageMeta = MetaService.parseMeta(packageMetaPath)[1]
 	else
 		packageMeta = {
 			name = meta.name,

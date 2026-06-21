@@ -26,7 +26,7 @@ local function load()
 		return basePackage
 	end
 
-	local function registerPackage(path, module, package, warnings)
+	local function registerPackage(path, module, package)
 		if rsModule then
 			rsModule.register(package.meta, path, module)
 
@@ -42,8 +42,11 @@ local function load()
 
 	local require = require
 	local xrequire = function(path)
+		assert(not path:match("/"))
+
 		local result, resolvedPath, package = common:require(require, getBasePackage(1), path, packages)
 		if package then
+			assert(not resolvedPath:match("/"))
 			registerPackage(resolvedPath or path, result, package)
 		end
 

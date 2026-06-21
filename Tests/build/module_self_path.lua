@@ -28,7 +28,6 @@ love.filesystem.write(
 		local PATH = ... 
 		local RatScratchModule = require("rat-scratch-module")
 
-
 		local function main()
 			assert(RatScratchModule.getSelfPath() == RatScratchModule.getSelfPath(PATH))
 			print(("module path: %s"):format(RatScratchModule.getSelfPath()))
@@ -71,6 +70,6 @@ Test.stop()
 Test.init()
 Test.build({})
 
-local file = io.popen("love ./rat-scratch-test")
-assert(file)
-assert(file:read("*l") == "module path: build/rat-scratch-test/source")
+Test.hasOutput({
+	"module path: build/rat-scratch-test/source",
+})
