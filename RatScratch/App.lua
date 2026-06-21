@@ -110,7 +110,7 @@ function App.init(options)
 	FilesystemService.mountLibraryDirectory(libraryDirectory)
 	FilesystemService.mountBuildDirectory(buildDirectory)
 
-	PackageService.registerPackage(meta[1], "staging/module", ("local::%s@%s"):format(meta[1].name, meta[1].version))
+	PackageService.registerPackage(meta[1], "staging/module", ("local:%s@%s"):format(meta[1].name, meta[1].version))
 end
 
 function App.deinit(options)

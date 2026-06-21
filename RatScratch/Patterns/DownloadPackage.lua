@@ -157,8 +157,10 @@ local function DownloadPackage(inputMeta, urls, parentMeta, headers)
 
 			blobMeta = MetaService.clone(inputMeta)
 			blobMeta.url = downloadedMeta and downloadedMeta.url or parentMeta.url or url
-			blobMeta.hash = downloadedMeta and downloadedMeta.hash or hash
 			blobMeta.root = downloadedMeta and downloadedMeta.root or parentMeta.root
+
+			local blobHash = downloadedMeta and downloadedMeta.hash or hash
+			blobMeta.hash = blobHash:match("sha.*:.*") and blobHash or nil
 
 			local rootMetaPath = ("%s/%s"):format(rootPath, url)
 			local childMeta = MetaService.parseMeta(rootMetaPath)[1]
