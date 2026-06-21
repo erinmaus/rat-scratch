@@ -93,6 +93,30 @@ function Add.perform(options, inputs)
 		InstallPackage(lock[i])
 	end
 
+	for i = 2, #lock do
+		local lockMeta = lock[i]
+
+		local childMeta
+		if modifiedMeta.name == lockMeta.name then
+			childMeta = MetaService.clone(modifiedMeta)
+			childMeta.version = version or "*"
+		else
+			for j = 2, #parentMeta do
+				if parentMeta[j].name == lockMeta.name then
+					childMeta = parentMeta[j]
+					break
+				end
+			end
+		end
+
+		if childMeta and childMeta.url:match("(.*).rsmeta") then
+			local pendingLockMeta = MetaService.clone(lockMeta)
+			pendingLockMeta.version = childMeta.version
+
+			lock[i] = pendingLockMeta
+		end
+	end
+
 	ValidateLock(lock)
 	WriteLock(lock, packageMeta)
 end

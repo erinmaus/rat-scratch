@@ -38,7 +38,7 @@ local function getSpecificDependencies(meta, otherMeta)
 end
 
 local function WriteLock(lock, packageMeta, filename)
-	MetaService.writeMeta(getSpecificDependencies(lock, packageMeta, strict), filename)
+	MetaService.writeMeta(getSpecificDependencies(lock, packageMeta), filename)
 end
 
 return WriteLock
