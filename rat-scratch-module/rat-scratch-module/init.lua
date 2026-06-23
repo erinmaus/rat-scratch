@@ -210,12 +210,13 @@ local function _findPath(path)
 					end
 				end
 			else
-				if meta[1].source then
-					local possibleSelfPath = rootSelfPath ~= "" and ("%s/%s"):format(rootSelfPath, meta.source)
-						or meta[1].source
-					if possibleSelfPath and love.filesystem.getInfo(possibleSelfPath, "directory") then
-						selfPath = possibleSelfPath
-					end
+				local possibleSelfPath = rootSelfPath ~= ""
+						and ("%s/%s"):format(rootSelfPath, meta[1].source or "source")
+					or meta[1].source
+				if possibleSelfPath and love.filesystem.getInfo(possibleSelfPath, "directory") then
+					requirePath = possibleSelfPath:gsub("/", ".")
+					selfPath = possibleSelfPath
+					targetMeta = meta[1]
 				end
 			end
 		end
