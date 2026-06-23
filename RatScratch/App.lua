@@ -8,12 +8,14 @@ local Test = require("RatScratch.Commands.Test")
 local PackageService = require("RatScratch.Services.PackageService")
 local Help = require("RatScratch.Commands.Help")
 local Get = require("RatScratch.Commands.Get")
+local Set = require("RatScratch.Commands.Set")
 
 local App = {}
 
 App.COMMANDS = {
 	{ name = "add", command = Add },
 	{ name = "get", command = Get },
+	{ name = "set", command = Set },
 	{ name = "test", command = Test },
 	{ name = "bundle", command = Bundle },
 	{ name = "build", command = Build },
