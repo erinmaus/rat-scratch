@@ -30,7 +30,7 @@ local function InstallPackage(meta)
 		FilesystemService.delete(destinationPath)
 	end
 
-	local sourcePath = ("%s/%s"):format(packagePath, packageMeta.source)
+	local sourcePath = packageMeta.source ~= "." and ("%s/%s"):format(packagePath, packageMeta.source) or packagePath
 	if love.filesystem.getInfo(sourcePath, "file") then
 		destinationPath = ("%s/init.lua"):format(destinationPath)
 	end
