@@ -57,11 +57,14 @@ function Add.perform(options, inputs)
 				GitHubService.buildBranchDownloadURL(organization, project, identifier),
 			}
 
-			if identifier:match("^%w%d+%.%d+%.%d+") then
+			if identifier:match("^%w%d+%.%d+%.?%d*") then
 				-- GitHub drops the "v" from tags in the form "v1.0.0"... Let's be a bit cautious and make the entire letter optional.
 				root = root
 					or ("^%s-%s$")
-						:format(project, identifier:gsub("^(%w)(%d+%.%d+%.%d+)", "%1?%2"))
+						:format(
+							project,
+							identifier:gsub("^(%w)(%d+%.%d+%.%d+)", "%1?%2"):gsub("^(%w)(%d+%.%d+)", "%1?%2")
+						)
 						:gsub("([%-%.])", "%%%1")
 			else
 				root = root or ("^%s-%s$"):format(project, identifier):gsub("([%-%.])", "%%%1")
