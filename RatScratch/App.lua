@@ -93,6 +93,11 @@ function App.init(options)
 
 	local metaRootNativePath =
 		love.filesystem.canonicalizeRealPath(FilesystemService.buildPath(options.meta or ".", ".."))
+
+	if metaRootNativePath == "" then
+		metaRootNativePath = love.filesystem.getWorkingDirectory()
+	end
+
 	Console.assert(
 		metaRootNativePath ~= sourceNativePath,
 		"source directory (%s) cannot be Rat Scratch module meta directory (%s)",
