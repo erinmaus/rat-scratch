@@ -50,7 +50,7 @@ function Add.perform(options, inputs)
 		local organization, project, identifierType, identifier = url:match("(.-)/(.*)([#@])(.*)")
 		if identifierType == "#" then
 			urls = { GitHubService.buildHashDownloadURL(organization, project, identifier) }
-			root = root or ("^%s-%s([%w%a]*)$"):format(project, identifier):gsub("%-", "%%-")
+			root = root or ("^%s-%s([%%w%%a]*)$"):format(project, identifier):gsub("%-", "%%-")
 		else
 			urls = {
 				GitHubService.buildTagDownloadURL(organization, project, identifier),
