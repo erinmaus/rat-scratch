@@ -105,7 +105,7 @@ Test.addPackage({ name = "rs-common" }, "http://localhost:3000/fixtures/rs-test-
 Test.build({})
 
 Test.hasOutput({
-	"rat-scratch-module (1.0.1)",
+	"rat-scratch-module (1.1.0)",
 	"rat-scratch-test (1.0.0)",
 	"rs-common (1.1.2)",
 	"rs-gltf (1.2.3)",

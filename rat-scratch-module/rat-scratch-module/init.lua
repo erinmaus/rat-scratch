@@ -274,4 +274,27 @@ function RatScratchModule.getSelfPath(path)
 	return pathInfo and pathInfo.path or ""
 end
 
+function RatScratchModule.getSelfVersion(path)
+	if not path then
+		local info = debug.getinfo(2, "S")
+		path = info and (info.source:match("@(.-)%..*$") or ""):gsub("/", ".")
+	end
+
+	if not path then
+		return ""
+	end
+
+	if not path then
+		return ""
+	end
+
+	local pathInfo = _findPath(path)
+	return pathInfo and pathInfo.meta and pathInfo.meta.version
+end
+
+function RatScratchModule.isCompatible(path, expectedVersion)
+	local currentVersion = RatScratchModule.getSelfVersion(path)
+	return currentVersion and Meta.isVersionMatch(currentVersion, expectedVersion)
+end
+
 return RatScratchModule

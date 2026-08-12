@@ -147,7 +147,7 @@ function Meta.parse(data)
 		end
 	end
 
-	_validatePackage(packages, currentPackage)
+	_validatePackage(packages, currentPackage, 1)
 	table.insert(packages, currentPackage)
 
 	return packages

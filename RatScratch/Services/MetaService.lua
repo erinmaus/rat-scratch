@@ -15,7 +15,7 @@ function MetaService.parseMeta(filename)
 	Console.assert(
 		love.filesystem.getInfo(filename, "file"),
 		'Rat Scratch module meta does not exist at path "%s"',
-		filename
+		love.filesystem.getRealDirectory("staging/module")
 	)
 
 	return Meta.fromFile(filename, data)
