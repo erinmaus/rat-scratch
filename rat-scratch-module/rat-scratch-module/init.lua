@@ -297,4 +297,81 @@ function RatScratchModule.isCompatible(path, expectedVersion)
 	return currentVersion and Meta.isVersionMatch(currentVersion, expectedVersion)
 end
 
+RatScratchModule.PLATFORMS = {
+	["OS X"] = "macos",
+	["Windows"] = "windows",
+	["Linux"] = "linux",
+}
+
+RatScratchModule.EXTENSIONS = {
+	["OS X"] = "dylib",
+	["Windows"] = "dll",
+	["Linux"] = "so",
+}
+
+function RatScratchModule.loadLibrary(path, library)
+	local path = RatScratchModule.getSelfPath(path)
+
+	local systemOS = love.system.getOS()
+	local platformFolder = RatScratchModule.PLATFORMS[systemOS]
+	local extension = RatScratchModule.EXTENSIONS[systemOS]
+	if not platformFolder then
+		error(("FFI library loading on platform '%s' not supported"):format(systemOS))
+	end
+
+	local binaryPath = ("%s/bin/%s/%s.%s"):format(path, platformFolder, library, extension)
+	local libraryPath
+	if love.filesystem.isFused() and love.filesystem.getRealDirectory(path):match(".*%.love$") then
+		if not love.filesystem.createDirectory(".rsm") then
+			error("could not create binary staging directory")
+		end
+
+		local sourceDirectory = love.filesystem.getSourceBaseDirectory()
+		if love.filesystem.mountFullPath(sourceDirectory, ".rsm/source", "read", false) then
+			local sourceLibraryPath = (".rsm/source/%s.%s"):format(library, extension)
+			if love.filesystem.getInfo(sourceLibraryPath, "file") then
+				libraryPath = ("%s/%s.%s"):format(love.filesystem.getSourceBaseDirectory(), library, extension)
+			end
+
+			love.filesystem.unmountFullPath(sourceDirectory)
+		end
+
+		if not love.filesystem.getInfo(binaryPath, "file") then
+			error(("library '%s' not found at path '%s'"):format(library, binaryPath))
+		end
+
+		if not libraryPath then
+			local saveBinaryRootPath = (".rsm/%s/bin/%s"):format(path, platformFolder)
+			local saveBinaryWritePath = ("%s/%s.%s"):format(saveBinaryRootPath, library, extension)
+			local saveBinaryPath = ("%s/%s/%s.%s"):format(
+				love.filesystem.getSaveDirectory(),
+				saveBinaryRootPath,
+				library,
+				extension
+			)
+
+			if love.filesystem.createDirectory(saveBinaryRootPath) then
+				local data = love.filesystem.read(binaryPath)
+				if not love.filesystem.write(saveBinaryWritePath, data) then
+					error(("could not copy '%s' to '%s'"):format(saveBinaryWritePath, saveBinaryPath))
+				end
+			end
+
+			libraryPath = saveBinaryPath
+		end
+
+		if not libraryPath then
+			error(("could not resolve library '%s' path"):format(library))
+		end
+	else
+		if not love.filesystem.getInfo(binaryPath, "file") then
+			error(("library '%s' not found at path '%s'"):format(library, binaryPath))
+		end
+
+		libraryPath = binaryPath
+	end
+
+	return require("ffi").load(libraryPath)
+end
+
 return RatScratchModule
