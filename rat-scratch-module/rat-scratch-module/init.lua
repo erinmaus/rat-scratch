@@ -1,3 +1,4 @@
+local PATH = ...
 local clear = require("table.clear")
 local Filesystem = require("rat-scratch-module.Filesystem")
 local Meta = require("rat-scratch-module.Meta")
@@ -210,13 +211,29 @@ local function _findPath(path)
 					end
 				end
 			else
-				local possibleSelfPath = rootSelfPath ~= ""
-						and ("%s/%s"):format(rootSelfPath, meta[1].source or "source")
-					or meta[1].source
-				if possibleSelfPath and love.filesystem.getInfo(possibleSelfPath, "directory") then
-					requirePath = possibleSelfPath:gsub("/", ".")
-					selfPath = possibleSelfPath
-					targetMeta = meta[1]
+				local initPath = ("%s/init.lua"):format(rootSelfPath)
+
+				local possibleSelfPaths
+				if rootSelfPath ~= "" then
+					possibleSelfPaths = {
+						("%s/%s"):format(rootSelfPath, meta[1].source or "source"),
+						("%s/%s"):format(rootSelfPath, "source"),
+					}
+				else
+					possibleSelfPaths = {
+						meta[1].source or "source",
+					}
+				end
+
+				for _, possibleSelfPath in ipairs(possibleSelfPaths) do
+					if love.filesystem.getInfo(possibleSelfPath, "directory") then
+						if not love.filesystem.getInfo(initPath, "file") then
+							requirePath = possibleSelfPath:gsub("/", ".")
+						end
+
+						selfPath = possibleSelfPath
+						targetMeta = meta[1]
+					end
 				end
 			end
 		end
@@ -372,6 +389,23 @@ function RatScratchModule.loadLibrary(path, library)
 	end
 
 	return require("ffi").load(libraryPath)
+end
+
+function RatScratchModule.newThread(path, filename, ...)
+	local threadWrapperFilename = ("%s/Thread.lua"):format(RatScratchModule.getSelfPath(PATH))
+
+	local threadSource = love.filesystem.read(threadWrapperFilename)
+	local args = {
+		path = RatScratchModule.getSelfRequire(PATH),
+		filename = filename,
+		args = { ... },
+		n = select("#", ...),
+	}
+
+	local thread = love.thread.newThread(threadSource)
+	thread:start(args)
+
+	return thread
 end
 
 return RatScratchModule
